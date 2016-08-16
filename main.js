@@ -234,6 +234,7 @@ ffbeTool.prototype = {
 
       var columns = this.columns;
       var dividerSize = this.dividerSize;
+      var outputPath = this.outputPath;
 
       fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
@@ -270,6 +271,8 @@ ffbeTool.prototype = {
                      var crop;
                      var fname = 'outs/crop-' + index + '-' + frameIndex + '-' + idx + '.png';
                      clone = img.clone(); // NOTE: crop is destructive, so we must reclone
+
+                     crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                      // TODO: manipulate the image
                      // blend(), rotate(), flipx, flipy, colorTransform
@@ -317,6 +320,7 @@ ffbeTool.prototype = {
 
             var animImage = null;
             var tmpColumns = columns;
+            var rows = Math.ceil(frameImages.length / columns);
 
             if (columns === 0 || columns >= frameImages.length) {
                columns = frameImages.length;
@@ -336,16 +340,62 @@ ffbeTool.prototype = {
                         console.log('compositing frame ' + index + ' to strip');
 
                         image.composite(frame, index * (frameRect.width + dividerSize), 0);
-                        //image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-                     });
+                     }); // end each frame
 
-                     console.log('saving image');
-                     image.write('outs/out.png');
+                     if (dividerSize > 0) {
+                        // addDividers(image, frameRect, 0);
+                     }
 
-                  });
+                     if (outputPath !== '.') {
+                        fs.mkdirAsync(outputPath).then(function (directory) {
+                           var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                           var bits = filename.split('_');
+
+                           var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+
+                           console.log('saving image strip : ' + outputName);
+                           image.write(outputName);
+                        });
+                     }
+
+                  }); // end new Jimp
             } else {
-               console.log('else path not implemented');
-            }
+               new Jimp(
+                  (columns * frameRect.width) + ((columns - 1) * dividerSize),
+                  (rows * frameRect.height) + ((rows - 1) * dividerSize),
+                  function (err, image) {
+                     _.each(_.range(rows), function (row) {
+                        _.each(_.range(columns), function (col) {
+                           var index = (row * columns) + col;
+                           var frameObject = frameImages[index];
+                           var frame = frameObject.image;
+                           var rect = frameObject.rect;
+
+                           console.log('compositing frame ' + index + ' to strip');
+                           image.composite(frame, 
+                                          col * (frameRect.width + dividerSize),
+                                          row * (frameRect.height + dividerSize));
+                        }); // end each col
+                     }); // end each row
+
+                     if (dividerSize > 0) {
+                        // addDividers(image, frameRect, rows);
+                     }
+
+                     if (outputPath !== '.') {
+                        fs.mkdirAsync(outputPath).then(function (directory) {
+                           var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                           var bits = filename.split('_');
+
+                           var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+
+                           console.log('saving sprite sheet : ' + outputName);
+                           image.write(outputName);
+                        });
+                     }
+
+                  }); // end new Jimp
+            } // end if-else
          }); // end readFileAsync
    } // end makeStrip
 };
