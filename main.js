@@ -416,15 +416,6 @@ var main = function (argv) {
 
    ffbe.processCommandArgs(process.argv);
 
-   //Jimp.read('tmp/kain/unit_ills_204000203.png')
-   //Jimp.read('tmp/cecil/unit_ills_204000103.png')
-   //Jimp.read('tmp/cecil/unit_icon_204000103.png')
-   //Jimp.read('tmp/testempty.png')
-   //   .then(function (image) {
-   //      var rect = getColorBoundsRect(image, 0xff000000, 0, false);
-   //      console.log(rect);
-   //   });
-
    ffbe.readCggAsync(ffbe.id)
       .then(_.bind(ffbe.readPngAsync, ffbe));
 };
