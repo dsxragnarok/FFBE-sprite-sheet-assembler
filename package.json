@@ -1,0 +1,16 @@
+{
+  "name": "ffbetool",
+  "version": "0.0.0",
+  "description": "tool to construct animation frames from png and ccg information",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kevin Phung <phung.kevin@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.4.1",
+    "jimp": "^0.2.24",
+    "underscore": "^1.8.3"
+  }
+}
