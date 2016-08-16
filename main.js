@@ -209,18 +209,59 @@ ffbeTool.prototype = {
       var frames = data.frames;
       var unitID = data.unitID;
 
-      // TODO: fix this hardcoded this.animName
-      this.animName = 'idle';
+      var inputPath = this.inputPath;
 
       var pngPath = this.inputPath + '/unit_anime_' + unitID + '.png';
-      var cgsPath = this.inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
+      var cgsPath;// = this.inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
 
       Jimp.read(pngPath).then(_.bind(function (image) {
-         this.makeStrip(cgsPath, frames, image);
+         if (this.animName) {
+            cgsPath = inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
+            this.makeStrip(cgsPath, frames, image);
+         } else {
+            console.log(' * No animName');
+            fs.readdirAsync(this.inputPath).then(_.bind(function (files) {
+               console.log('input path files: ');
+               console.log(files);
+               _.each(files, _.bind(function (file) {
+                  var extension = file.substring(file.lastIndexOf('.'));
+                  cgsPath = this.inputPath + '/' + file;
+
+                  console.log(' - processing ' + file);
+
+                  if (extension === '.csv' && file.indexOf('_cgs_') >= 0 && 
+                     file.indexOf(unitID) >= 0) {
+
+                     console.log(' -- ' + file + ' is target  cgs');
+                     this.makeStrip(cgsPath, frames, image);
+                  } 
+               }, this));
+            }, this)).catch(function (err) {
+               console.log(err.stack);
+            });
+         }
       }, this)).catch(function (err) {
          console.error(err.stack);
       });
+      /*if (this.animName) {
+         cgsPath = inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
+         Jimp.read(pngPath).then(_.bind(function (image) {
+            this.makeStrip(cgsPath, frames, image);
+         }, this)).catch(function (err) {
+            console.error(err.stack);
+         });
+      } else {
+         fs.readdirAsync(this.inputPath).then(function (files) {
+            _.each(files, function (file) {
+               var extension = file.substring(file.lastIndexOf('.'));
 
+               if (extension === 'csv' && file.indexOf('_cgs_') >= 0) {
+
+               } 
+
+            });
+         });
+      }*/
    },
 
    /**
@@ -355,6 +396,16 @@ ffbeTool.prototype = {
 
                            console.log('saving image strip : ' + outputName);
                            image.write(outputName);
+                        }).catch(function (err) {
+                           if (err.code === 'EEXIST') {
+                              var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                              var bits = filename.split('_');
+
+                              var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+
+                              console.log('saving image strip : ' + outputName);
+                              image.write(outputName);
+                           }
                         });
                      }
 
@@ -391,6 +442,16 @@ ffbeTool.prototype = {
 
                            console.log('saving sprite sheet : ' + outputName);
                            image.write(outputName);
+                        }).catch(function (err) {
+                           if (err.code === 'EEXIST') {
+                              var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                              var bits = filename.split('_');
+
+                              var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+
+                              console.log('saving sprite sheet : ' + outputName);
+                              image.write(outputName);
+                           }
                         });
                      }
 
