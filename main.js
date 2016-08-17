@@ -243,25 +243,6 @@ ffbeTool.prototype = {
       }, this)).catch(function (err) {
          console.error(err.stack);
       });
-      /*if (this.animName) {
-         cgsPath = inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
-         Jimp.read(pngPath).then(_.bind(function (image) {
-            this.makeStrip(cgsPath, frames, image);
-         }, this)).catch(function (err) {
-            console.error(err.stack);
-         });
-      } else {
-         fs.readdirAsync(this.inputPath).then(function (files) {
-            _.each(files, function (file) {
-               var extension = file.substring(file.lastIndexOf('.'));
-
-               if (extension === 'csv' && file.indexOf('_cgs_') >= 0) {
-
-               } 
-
-            });
-         });
-      }*/
    },
 
    /**
