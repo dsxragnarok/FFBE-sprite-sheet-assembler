@@ -322,8 +322,13 @@ ffbeTool.prototype = {
                         crop = blend(crop);
                      }
 
+                     if (part.rotate !== 0) {
+                        console.log(' -- rotating part: ' + part.rotate);
+                        crop.rotate(360 - part.rotate, true);
+                     }
+
                      if (part.opacity < 100) {
-                        console.log(' -- reducing opacity -- ');
+                        console.log(' -- reducing opacity: ' + part.opacity);
                         crop.opacity(part.opacity / 100);
                      }
 
@@ -428,13 +433,18 @@ ffbeTool.prototype = {
                         _.each(_.range(columns), function (col) {
                            var index = (row * columns) + col;
                            var frameObject = frameImages[index];
-                           var frame = frameObject.image;
-                           var rect = frameObject.rect;
+                           
+                           var frame, rect;
+                           
+                           if (frameObject) {
+                              frame = frameObject.image;
+                              rect = frameObject.rect;
 
-                           console.log('compositing frame ' + index + ' to strip');
-                           image.composite(frame, 
-                                          col * (frameRect.width + dividerSize),
-                                          row * (frameRect.height + dividerSize));
+                              console.log('compositing frame ' + index + ' to strip');
+                              image.composite(frame, 
+                                             col * (frameRect.width + dividerSize),
+                                             row * (frameRect.height + dividerSize));
+                           }
                         }); // end each col
                      }); // end each row
 
