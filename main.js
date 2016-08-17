@@ -314,9 +314,6 @@ ffbeTool.prototype = {
 
                      crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
-                     // TODO: manipulate the image
-                     // rotate(), flipx, flipy, colorTransform
-
                      if (part.blendMode === 1) {
                         console.log(' -- blending part -- ');
                         crop = blend(crop);
@@ -325,6 +322,11 @@ ffbeTool.prototype = {
                      if (part.rotate !== 0) {
                         console.log(' -- rotating part: ' + part.rotate);
                         crop.rotate(360 - part.rotate, true);
+                     }
+
+                     if (part.flipX || part.flipY) {
+                        console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
+                        crop.flip(part.flipX, part.flipY);
                      }
 
                      if (part.opacity < 100) {
