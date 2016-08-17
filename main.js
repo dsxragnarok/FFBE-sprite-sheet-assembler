@@ -89,6 +89,24 @@ var getColorBoundsRect = function (image, mask, color, findColor) {
    };
 };
 
+var blend = function (image) {
+   return new Promise(function (resolve, reject) {
+      _.each(_.range(image.bitmap.width), function (x) {
+         _.each(_.range(image.bitmap.height), function (y) {
+            var pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+
+            var alpha;
+
+            if (pixelColorInt.a !== 0) {
+               alpha = (pixel.r + pixel.g + pixel.b) / 3;
+               image.setPixelColor(Jimp.rgbaToInt(pixel.r, pixel.g, pixel.b, alpha), x, y);
+            }
+         }); // end y
+      }); // end x
+
+      resolve(image);
+   }); // end promise
+};
 
 ffbeTool.prototype = {
    processCommandArgs: function (argv) {
@@ -257,6 +275,7 @@ ffbeTool.prototype = {
       var columns = this.columns;
       var dividerSize = this.dividerSize;
       var outputPath = this.outputPath;
+      var blendMode = this.blendMode;
 
       fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
@@ -299,9 +318,18 @@ ffbeTool.prototype = {
                      // TODO: manipulate the image
                      // blend(), rotate(), flipx, flipy, colorTransform
 
-                     console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
-                     
-                     image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                     if (blendMode === 1) {
+                        console.log(' -- blending part -- ');
+                        blend(crop).then(function (blendedImage) {
+                           console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
+                           image.composite(blendedImage, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);      
+                        });
+                     } else {
+                        console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
+                        
+                        image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                     }
+
                   }); // end part.each
 
                   var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
