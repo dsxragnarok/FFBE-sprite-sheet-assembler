@@ -315,12 +315,18 @@ ffbeTool.prototype = {
                      crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                      // TODO: manipulate the image
-                     // blend(), rotate(), flipx, flipy, colorTransform
+                     // rotate(), flipx, flipy, colorTransform
 
                      if (part.blendMode === 1) {
                         console.log(' -- blending part -- ');
                         crop = blend(crop);
-                     } 
+                     }
+
+                     if (part.opacity < 100) {
+                        console.log(' -- reducing opacity -- ');
+                        crop.opacity(part.opacity / 100);
+                     }
+
                      console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
                      
                      image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
