@@ -89,6 +89,19 @@ var getColorBoundsRect = function (image, mask, color, findColor) {
    };
 };
 
+// Promise wrap Jimp constructor
+var createImage = function (width, height) {
+   return new Promise(function (resolve, reject) {
+      new Jimp(width, height, function (err, image) {
+         if (err) {
+            return reject(err);
+         }
+
+         return resolve(image);
+      });
+   });
+};
+
 var blend = function (image) {
    _.each(_.range(image.bitmap.width), function (x) {
       _.each(_.range(image.bitmap.height), function (y) {
@@ -287,133 +300,128 @@ ffbeTool.prototype = {
 
             var datasplit = data.split('\r\n');
 
-            // NOTE: find iterates and runs the code for each element in the
-            // array until it reaches a condition that returns which breaks
-            // out of the loop
-            _.find(datasplit, function (line, index) {
-               var params = line.split(',');
-               params.splice(params.length-1, 1);
+            var processDataLine = function (line, index) {
+               return new Promise(function (resolve, reject) {
+                  var params = line.split(',');
+                  params.splice(params.length-1, 1);
 
-               var frameIndex, xPos, yPos, delay, frameImage;
+                  var frameIndex, xPos, yPos, delay, frameImage;
 
-               if (params.length < 2) {
-                  console.log('params.length was less than 2');
-                  return true;
-               }
-
-               frameIndex = parseInt(params[0]);
-               xPos = parseInt(params[1]);
-               yPos = parseInt(params[2]);
-               delay = parseInt(params[3]);
-
-               new Jimp(2000, 2000, function (err, image) {
-                  _.each(frames[frameIndex], function (part, idx) {
-                     var crop;
-                     var fname = 'outs/crop-' + index + '-' + frameIndex + '-' + idx + '.png';
-                     clone = img.clone(); // NOTE: crop is destructive, so we must reclone
-
-                     crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
-
-                     if (part.blendMode === 1) {
-                        console.log(' -- blending part -- ');
-                        crop = blend(crop);
-                     }
-
-                     if (part.rotate !== 0) {
-                        console.log(' -- rotating part: ' + part.rotate);
-                        crop.rotate(360 - part.rotate, true);
-                     }
-
-                     if (part.flipX || part.flipY) {
-                        console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
-                        crop.flip(part.flipX, part.flipY);
-                     }
-
-                     if (part.opacity < 100) {
-                        console.log(' -- reducing opacity: ' + part.opacity);
-                        crop.opacity(part.opacity / 100);
-                     }
-
-                     console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
-                     
-                     image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-                  }); // end part.each
-
-                  var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
-                  var frameObject = {};
-                  if (rect.width > 0 && rect.height > 0) {
-                     frameObject = {
-                        image: image.crop(rect.x, rect.y, rect.width, rect.height),
-                        rect: rect
-                     };
-                     frameImages.push(frameObject);
-
-                     if (topLeft === null) {
-                        topLeft = {x: rect.x, y: rect.y};
-                        bottomRight = {
-                           x: rect.x + rect.width,
-                           y: rect.y + rect.height
-                        };
-                     } else {
-                        topLeft.x = Math.min(rect.x, topLeft.x);
-                        topLeft.y = Math.min(rect.y, topLeft.y);
-                        bottomRight.x = Math.max(rect.x + rect.width, bottomRight.x);
-                        bottomRight.y = Math.max(rect.y + rect.height, bottomRight.y);
-                     }
-
-                     console.log('Frame ' + frameImages.length + ' done');
+                  if (params.length < 2) {
+                     //console.log('params.length was less than 2');
+                     //return reject('params.length was less than 2');
+                     //return true;
+                     return resolve(null);
                   }
-               }); // end of new Jimp
-            }); // end line.each
 
-            // NOTE: possible issue with nature of asynchronicity
-            console.log('--- Making strip ---');
-            frameRect = {
-               x: topLeft.x - 5,
-               y: topLeft.y - 5,
-               width: bottomRight.x - topLeft.x + 10,
-               height: bottomRight.y - topLeft.y + 10
-            };
+                  frameIndex = parseInt(params[0]);
+                  xPos = parseInt(params[1]);
+                  yPos = parseInt(params[2]);
+                  delay = parseInt(params[3]);
 
-            var animImage = null;
-            var tmpColumns = columns;
-            var rows = Math.ceil(frameImages.length / columns);
+                  createImage(2000, 2000).then(function (image) {
+                     _.each(frames[frameIndex], function (part, idx) {
+                        var crop;
+                        var fname = 'outs/crop-' + index + '-' + frameIndex + '-' + idx + '.png';
+                        clone = img.clone(); // NOTE: crop is destructive, so we must reclone
 
-            if (columns === 0 || columns >= frameImages.length) {
-               columns = frameImages.length;
-               new Jimp(
-                  frameImages.length * (frameRect.width + dividerSize) - dividerSize,
-                  frameRect.height,
-                  function (err, image) {
-                     if (err) {
-                        console.log('new jimp error', err);
-                     }
+                        crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
-                     _.each(_.range(frameImages.length), function (index) {
-                        var frameObject = frameImages[index];
-                        var frame = frameObject.image;
-                        var rect = frameObject.rect;
+                        if (part.blendMode === 1) {
+                           console.log(' -- blending part -- ');
+                           crop = blend(crop);
+                        }
+
+                        if (part.rotate !== 0) {
+                           console.log(' -- rotating part: ' + part.rotate);
+                           crop.rotate(360 - part.rotate, true);
+                        }
+
+                        if (part.flipX || part.flipY) {
+                           console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
+                           crop.flip(part.flipX, part.flipY);
+                        }
+
+                        if (part.opacity < 100) {
+                           console.log(' -- reducing opacity: ' + part.opacity);
+                           crop.opacity(part.opacity / 100);
+                        }
+
+                        console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
                         
-                        console.log('compositing frame ' + index + ' to strip');
+                        image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                     }); // end part.each
 
-                        image.composite(frame, index * (frameRect.width + dividerSize), 0);
-                     }); // end each frame
+                     var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
+                     var frameObject = {};
+                     if (rect.width > 0 && rect.height > 0) {
+                        frameObject = {
+                           image: image.crop(rect.x, rect.y, rect.width, rect.height),
+                           rect: rect
+                        };
+                        frameImages.push(frameObject);
 
-                     if (dividerSize > 0) {
-                        // addDividers(image, frameRect, 0);
-                     }
+                        if (topLeft === null) {
+                           topLeft = {x: rect.x, y: rect.y};
+                           bottomRight = {
+                              x: rect.x + rect.width,
+                              y: rect.y + rect.height
+                           };
+                        } else {
+                           topLeft.x = Math.min(rect.x, topLeft.x);
+                           topLeft.y = Math.min(rect.y, topLeft.y);
+                           bottomRight.x = Math.max(rect.x + rect.width, bottomRight.x);
+                           bottomRight.y = Math.max(rect.y + rect.height, bottomRight.y);
+                        }
 
-                     if (outputPath !== '.') {
-                        fs.mkdirAsync(outputPath).then(function (directory) {
-                           var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                           var bits = filename.split('_');
+                        console.log('Frame ' + frameImages.length + ' done');
+                     } // end if rect.width > 0 and rect.height > 0
 
-                           var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+                     resolve(image);
+                  }); // end createImage.then
+               }); // end Promise
+            }; // end processDataLine
 
-                           console.log('saving image strip : ' + outputName);
-                           image.write(outputName);
-                        }).catch(function (err) {
-                           if (err.code === 'EEXIST') {
+            var processing = datasplit.map(processDataLine)
+            var results = Promise.all(processing);
+
+            results.then(function (image) {
+               console.log('--- Making strip ---');
+               console.log(topLeft);
+               frameRect = {
+                  x: topLeft.x - 5,
+                  y: topLeft.y - 5,
+                  width: bottomRight.x - topLeft.x + 10,
+                  height: bottomRight.y - topLeft.y + 10
+               };
+
+               var animImage = null;
+               var tmpColumns = columns;
+               var rows = Math.ceil(frameImages.length / columns);
+
+               if (columns === 0 || columns >= frameImages.length) {
+                  columns = frameImages.length;
+                  createImage(frameImages.length * (frameRect.width + dividerSize) - dividerSize, frameRect.height)
+                     .then(function (image) {
+                        _.each(_.range(frameImages.length), function (index) {
+                           var frameObject = frameImages[index];
+                           var frame = frameObject.image;
+                           var rect = frameObject.rect;
+                           
+                           console.log('compositing frame ' + index + ' to strip');
+
+                           image.composite(frame, index * (frameRect.width + dividerSize), 0);
+                        }); // end each frame
+
+                        return image;
+                     }) // end createImage.then
+                     .then(function (image) {
+                        if (dividerSize > 0) {
+                           // addDividers(image, frameRect, 0);
+                        }
+
+                        if (outputPath !== '.') {
+                           fs.mkdirAsync(outputPath).then(function (directory) {
                               var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
                               var bits = filename.split('_');
 
@@ -421,50 +429,54 @@ ffbeTool.prototype = {
 
                               console.log('saving image strip : ' + outputName);
                               image.write(outputName);
-                           }
-                        });
-                     }
+                           }).catch(function (err) {
+                              if (err.code === 'EEXIST') {
+                                 var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                                 var bits = filename.split('_');
 
-                  }); // end new Jimp
-            } else {
-               new Jimp(
-                  (columns * frameRect.width) + ((columns - 1) * dividerSize),
-                  (rows * frameRect.height) + ((rows - 1) * dividerSize),
-                  function (err, image) {
-                     _.each(_.range(rows), function (row) {
-                        _.each(_.range(columns), function (col) {
-                           var index = (row * columns) + col;
-                           var frameObject = frameImages[index];
-                           
-                           var frame, rect;
-                           
-                           if (frameObject) {
-                              frame = frameObject.image;
-                              rect = frameObject.rect;
+                                 var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
 
-                              console.log('compositing frame ' + index + ' to strip');
-                              image.composite(frame, 
-                                             col * (frameRect.width + dividerSize),
-                                             row * (frameRect.height + dividerSize));
-                           }
-                        }); // end each col
-                     }); // end each row
+                                 console.log('saving image strip : ' + outputName);
+                                 image.write(outputName);
+                              }
+                           });
+                        } // end if outputPath !== .
+                        // TODO: handle the else condition
+                     })
+                     .catch(function (err) {
+                        console.error('New Jimp Image error', err);
+                     }); // end createImage.catch
+               } else {
+                  createImage((columns * frameRect.width) + ((columns - 1) * dividerSize), (rows * frameRect.height) + ((rows - 1) * dividerSize))
+                     .then(function (image) {
+                        _.each(_.range(rows), function (row) {
+                           _.each(_.range(columns), function (col) {
+                              var index = (row * columns) + col;
+                              var frameObject = frameImages[index];
+                              
+                              var frame, rect;
+                              
+                              if (frameObject) {
+                                 frame = frameObject.image;
+                                 rect = frameObject.rect;
 
-                     if (dividerSize > 0) {
-                        // addDividers(image, frameRect, rows);
-                     }
+                                 console.log('compositing frame ' + index + ' to strip');
+                                 image.composite(frame, 
+                                                col * (frameRect.width + dividerSize),
+                                                row * (frameRect.height + dividerSize));
+                              }
+                           }); // end each col
+                        }); // end each row
 
-                     if (outputPath !== '.') {
-                        fs.mkdirAsync(outputPath).then(function (directory) {
-                           var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                           var bits = filename.split('_');
+                        return image;
+                     }) // end createImage.then
+                     .then(function (image) {
+                        if (dividerSize > 0) {
+                           // addDividers(image, frameRect, rows);
+                        }
 
-                           var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
-
-                           console.log('saving sprite sheet : ' + outputName);
-                           image.write(outputName);
-                        }).catch(function (err) {
-                           if (err.code === 'EEXIST') {
+                        if (outputPath !== '.') {
+                           fs.mkdirAsync(outputPath).then(function (directory) {
                               var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
                               var bits = filename.split('_');
 
@@ -472,12 +484,22 @@ ffbeTool.prototype = {
 
                               console.log('saving sprite sheet : ' + outputName);
                               image.write(outputName);
-                           }
-                        });
-                     }
+                           }).catch(function (err) {
+                              if (err.code === 'EEXIST') {
+                                 var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                                 var bits = filename.split('_');
 
-                  }); // end new Jimp
-            } // end if-else
+                                 var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+
+                                 console.log('saving sprite sheet : ' + outputName);
+                                 image.write(outputName);
+                              }
+                           });
+                        } // end if outputPath !== .
+                     }); // end then
+               } // end if-else
+            }); // end results.then
+
          }); // end readFileAsync
    } // end makeStrip
 };
