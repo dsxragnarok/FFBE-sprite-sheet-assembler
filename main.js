@@ -3,13 +3,12 @@ var fs = Promise.promisifyAll(require('fs'));
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-d divider thickness] [-e] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
    this.animName = '';
    this.columns = 0;
-   this.dividerSize = 0;
    this.includeEmpty = false;
    this.inputPath = '.';
    this.outputPath = '.';
@@ -133,9 +132,6 @@ ffbeTool.prototype = {
             case '-c':
                this.columns = parseInt(argv[++i]);
                break;
-            case '-d':
-               this.dividerSize = parseInt(argv[++i]);
-               break;
             case '-e':
                this.includeEmpty = true;
                break;
@@ -154,85 +150,86 @@ ffbeTool.prototype = {
       this.cggPath = this.inputPath + '/' + 'unit_cgg_' + unitID + '.csv';
 
       console.info('Loading ' + this.cggPath + '...');
-      
-      var ffbeScope = this;
-      var returnObject = {
-         unitID: unitID
-      };
 
       return fs.readFileAsync(this.cggPath, 'utf8')
          .then(function (data) {
-            var frames = [];
             var datasplit = data.split('\r\n');
-            _.each(datasplit, function (line, index) {
-               var params = line.split(',');
-               params.splice(params.length - 1, 1);
-               //console.log('line: ' + index + ' param.length = ' + params.length);
-               //console.log(params);
-               var anchor = 0, 
-                  count = 0, 
-                  parts = [], 
-                  part = null, 
-                  i = 0;
 
-               if (params.length >= 2) {
-                  anchor = parseInt(params[0]);
-                  count = parseInt(params[1]);
-                  parts = [], i = 2;
+            var processDataLine = function (line, index) {
+               return new Promise(function (resolve, reject) {
+                  var params = line.split(',');
+                  params.splice(params.length - 1, 1);
 
-                  //console.log('count: ' + count + ' | ' + (params.length-2)/count);
+                  var anchor = 0, 
+                     count = 0, 
+                     parts = [], 
+                     part = null, 
+                     i = 0;
 
-                  _.each(_.range(count), function (partInd) {
-                     part = {};
+                  if (params.length >= 2) {
+                     anchor = parseInt(params[0]);
+                     count = parseInt(params[1]);
+                     parts = [], i = 2;
 
-                     part.xPos = parseInt(params[i++]);
-                     part.yPos = parseInt(params[i++]);
-                     part.nextType = parseInt(params[i++]);
-                     part.flipX = false;
-                     part.flipY = false;
+                     _.each(_.range(count), function (partInd) {
+                        part = {};
 
-                     switch (part.nextType) {
-                        case 0:
-                           break;
-                        case 1:
-                           part.flipX = true;
-                           break;
-                        case 2:
-                           part.flipY = true;
-                           break;
-                        case 3:
-                           part.flipX = true;
-                           part.flipY = true;
-                           break;
-                        default:
-                           console.log("Invalid next type!");
-                           process.exit(1);
-                           return;  // we probably want to exit application...
+                        part.xPos = parseInt(params[i++]);
+                        part.yPos = parseInt(params[i++]);
+                        part.nextType = parseInt(params[i++]);
+                        part.flipX = false;
+                        part.flipY = false;
+
+                        switch (part.nextType) {
+                           case 0:
+                              break;
+                           case 1:
+                              part.flipX = true;
+                              break;
+                           case 2:
+                              part.flipY = true;
+                              break;
+                           case 3:
+                              part.flipX = true;
+                              part.flipY = true;
+                              break;
+                           default:
+                              console.log("Invalid next type!");
+                              //process.exit(1);
+                              return reject("Invalid next type!");
                         } // end switch
-                     part.blendMode = parseInt(params[i++]);
-                     part.opacity = parseInt(params[i++]);
-                     part.rotate = parseInt(params[i++]);
-                     part.imgX = parseInt(params[i++]);
-                     part.imgY = parseInt(params[i++]);
-                     part.imgWidth = parseInt(params[i++]);
-                     part.imgHeight = parseInt(params[i++]);
-                     part.pageID = parseInt(params[i++]);
 
-                     //console.log(part);
+                        part.blendMode = parseInt(params[i++]);
+                        part.opacity = parseInt(params[i++]);
+                        part.rotate = parseInt(params[i++]);
+                        part.imgX = parseInt(params[i++]);
+                        part.imgY = parseInt(params[i++]);
+                        part.imgWidth = parseInt(params[i++]);
+                        part.imgHeight = parseInt(params[i++]);
+                        part.pageID = parseInt(params[i++]);
 
-                     parts.push(part);
-                  }); // end inner _.each
-                  parts.reverse();
-                  frames.push(parts);
-               } else {
-                  console.log('params.length was less than 2');
-               }
+                        //console.log(part);
 
-            }); // end outer _.each
+                        parts.push(part);
+                     }); // end inner _.each
 
-            returnObject.frames = frames;
+                     return resolve(parts.reverse());
+                  } else {
+                     console.log('params.length was less than 2');
+                     return resolve(null);
+                  }
+               }); // end Promise 
+            }; // end processDataLine
 
-            return returnObject;
+            var processing = datasplit.map(processDataLine);
+            var results = Promise.all(processing);
+
+            return results.then(function (frames) {
+               return {
+                  unitID: unitID,
+                  frames: frames
+               };
+            });
          }); // end readFileAsync
    },
 
@@ -250,23 +247,19 @@ ffbeTool.prototype = {
             cgsPath = inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
             this.makeStrip(cgsPath, frames, image);
          } else {
-            console.log(' * No animName');
-            fs.readdirAsync(this.inputPath).then(_.bind(function (files) {
-               console.log('input path files: ');
-               console.log(files);
-               _.each(files, _.bind(function (file) {
-                  var extension = file.substring(file.lastIndexOf('.'));
-                  cgsPath = this.inputPath + '/' + file;
+            console.log(' * No animName *');
+            fs.readdirAsync(this.inputPath).map(_.bind(function (file) {
+               console.log('- processing ' + file);
 
-                  console.log(' - processing ' + file);
+               var extension = file.substring(file.lastIndexOf('.'));
+               cgsPath = this.inputPath + '/' + file;
 
-                  if (extension === '.csv' && file.indexOf('_cgs_') >= 0 && 
-                     file.indexOf(unitID) >= 0) {
+               if (extension === '.csv' && file.indexOf('_cgs_') >= 0 &&
+                  file.indexOf(unitID) >= 0) {
 
-                     console.log(' -- ' + file + ' is target  cgs');
-                     this.makeStrip(cgsPath, frames, image);
-                  } 
-               }, this));
+                  console.log(' -- ' + file + ' is target cgs');
+                  this.makeStrip(cgsPath, frames, image);
+               }
             }, this)).catch(function (err) {
                console.log(err.stack);
             });
@@ -286,7 +279,6 @@ ffbeTool.prototype = {
       console.log('Loading ' + cgsPath);
 
       var columns = this.columns;
-      var dividerSize = this.dividerSize;
       var outputPath = this.outputPath;
 
       fs.readFileAsync(cgsPath, 'utf8')
@@ -401,7 +393,7 @@ ffbeTool.prototype = {
 
                if (columns === 0 || columns >= frameImages.length) {
                   columns = frameImages.length;
-                  createImage(frameImages.length * (frameRect.width + dividerSize) - dividerSize, frameRect.height)
+                  createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
                         _.each(_.range(frameImages.length), function (index) {
                            var frameObject = frameImages[index];
@@ -410,16 +402,12 @@ ffbeTool.prototype = {
                            
                            console.log('compositing frame ' + index + ' to strip');
 
-                           image.composite(frame, index * (frameRect.width + dividerSize), 0);
+                           image.composite(frame, index * frameRect.width, 0);
                         }); // end each frame
 
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
-                        if (dividerSize > 0) {
-                           // addDividers(image, frameRect, 0);
-                        }
-
                         if (outputPath !== '.') {
                            fs.mkdirAsync(outputPath).then(function (directory) {
                               var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
@@ -447,7 +435,7 @@ ffbeTool.prototype = {
                         console.error('New Jimp Image error', err);
                      }); // end createImage.catch
                } else {
-                  createImage((columns * frameRect.width) + ((columns - 1) * dividerSize), (rows * frameRect.height) + ((rows - 1) * dividerSize))
+                  createImage(columns * frameRect.width, rows * frameRect.height)
                      .then(function (image) {
                         _.each(_.range(rows), function (row) {
                            _.each(_.range(columns), function (col) {
@@ -461,9 +449,7 @@ ffbeTool.prototype = {
                                  rect = frameObject.rect;
 
                                  console.log('compositing frame ' + index + ' to strip');
-                                 image.composite(frame, 
-                                                col * (frameRect.width + dividerSize),
-                                                row * (frameRect.height + dividerSize));
+                                 image.composite(frame, col * frameRect.width, row * frameRect.height);
                               }
                            }); // end each col
                         }); // end each row
@@ -471,10 +457,6 @@ ffbeTool.prototype = {
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
-                        if (dividerSize > 0) {
-                           // addDividers(image, frameRect, rows);
-                        }
-
                         if (outputPath !== '.') {
                            fs.mkdirAsync(outputPath).then(function (directory) {
                               var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
