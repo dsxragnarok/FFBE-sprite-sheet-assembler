@@ -1,5 +1,7 @@
 var Promise = require('bluebird');
 var fs = Promise.promisifyAll(require('fs'));
+var os = require('os');
+var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
@@ -147,7 +149,7 @@ ffbeTool.prototype = {
    },
 
    readCggAsync: function (unitID) {
-      this.cggPath = this.inputPath + '/' + 'unit_cgg_' + unitID + '.csv';
+      this.cggPath = path.join(this.inputPath, 'unit_cgg_' + unitID + '.csv');
 
       console.info('Loading ' + this.cggPath + '...');
 
@@ -239,20 +241,23 @@ ffbeTool.prototype = {
 
       var inputPath = this.inputPath;
 
-      var pngPath = this.inputPath + '/unit_anime_' + unitID + '.png';
-      var cgsPath;// = this.inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
+      var pngPath = path.join(this.inputPath, 'unit_anime_' + unitID + '.png');
+      var png = Jimp.read(pngPath);
+      var cgsPath;
 
-      Jimp.read(pngPath).then(_.bind(function (image) {
-         if (this.animName) {
-            cgsPath = inputPath + '/unit_' + this.animName + '_cgs_' + unitID + '.csv';
+      if (this.animName) {
+         cgsPath = path.join(inputPath, 'unit_' + this.animName + '_cgs_' + unitID + '.csv'); 
+         return png.then(_.bind(function (image) {
             this.makeStrip(cgsPath, frames, image);
-         } else {
-            console.log(' * No animName *');
+         }, this));
+      } else {
+         console.log(' * No animName *');
+         return png.then(_.bind(function (image) {
             fs.readdirAsync(this.inputPath).map(_.bind(function (file) {
                console.log('- processing ' + file);
 
-               var extension = file.substring(file.lastIndexOf('.'));
-               cgsPath = this.inputPath + '/' + file;
+               var extension = path.extname(file);
+               cgsPath = path.join(this.inputPath, file);
 
                if (extension === '.csv' && file.indexOf('_cgs_') >= 0 &&
                   file.indexOf(unitID) >= 0) {
@@ -263,10 +268,8 @@ ffbeTool.prototype = {
             }, this)).catch(function (err) {
                console.log(err.stack);
             });
-         }
-      }, this)).catch(function (err) {
-         console.error(err.stack);
-      });
+         }, this));
+      }
    },
 
    /**
@@ -288,9 +291,9 @@ ffbeTool.prototype = {
             var frameImages = [];
             var frameRect = null;
 
-            var clone = img.clone();
+            //var clone = img.clone();
 
-            var datasplit = data.split('\r\n');
+            var datasplit = data.replace('\r').split('\n');
 
             var processDataLine = function (line, index) {
                return new Promise(function (resolve, reject) {
@@ -314,8 +317,7 @@ ffbeTool.prototype = {
                   createImage(2000, 2000).then(function (image) {
                      _.each(frames[frameIndex], function (part, idx) {
                         var crop;
-                        var fname = 'outs/crop-' + index + '-' + frameIndex + '-' + idx + '.png';
-                        clone = img.clone(); // NOTE: crop is destructive, so we must reclone
+                        var clone = img.clone(); // NOTE: crop is destructive, so we must reclone
 
                         crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
@@ -410,19 +412,25 @@ ffbeTool.prototype = {
                      .then(function (image) {
                         if (outputPath !== '.') {
                            fs.mkdirAsync(outputPath).then(function (directory) {
-                              var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                              var bits = filename.split('_');
+                              var filename = path.basename(cgsPath, '.csv');
+                              var bits = filename.split('_cgs_');
+                              var name = bits[0].substring('unit_'.length);
+                              var uid = bits[1];
 
-                              var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+                              var outfilename = uid + '_' + name + '.png';
+                              var outputName = path.join(outputPath, outfilename);
 
                               console.log('saving image strip : ' + outputName);
                               image.write(outputName);
                            }).catch(function (err) {
                               if (err.code === 'EEXIST') {
-                                 var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                                 var bits = filename.split('_');
+                                 var filename = path.basename(cgsPath, '.csv');
+                                 var bits = filename.split('_cgs_');
+                                 var name = bits[0].substring('unit_'.length);
+                                 var uid = bits[1];
 
-                                 var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
+                                 var outfilename = uid + '_' + name + '.png';
+                                 var outputName = path.join(outputPath, outfilename);
 
                                  console.log('saving image strip : ' + outputName);
                                  image.write(outputName);
@@ -459,22 +467,43 @@ ffbeTool.prototype = {
                      .then(function (image) {
                         if (outputPath !== '.') {
                            fs.mkdirAsync(outputPath).then(function (directory) {
-                              var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                              /*var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
                               var bits = filename.split('_');
 
                               var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
 
                               console.log('saving sprite sheet : ' + outputName);
+                              image.write(outputName);*/
+
+                              var filename = path.basename(cgsPath, '.csv');
+                              var bits = filename.split('_cgs_');
+                              var name = bits[0].substring('unit_'.length);
+                              var uid = bits[1];
+
+                              var outfilename = uid + '_' + name + '.png';
+                              var outputName = path.join(outputPath, outfilename);
+
+                              console.log('saving sprite sheet : ' + outputName);
                               image.write(outputName);
                            }).catch(function (err) {
                               if (err.code === 'EEXIST') {
-                                 var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
+                                 var filename = path.basename(cgsPath, '.csv');
+                                 var bits = filename.split('_cgs_');
+                                 var name = bits[0].substring('unit_'.length);
+                                 var uid = bits[1];
+
+                                 var outfilename = uid + '_' + name + '.png';
+                                 var outputName = path.join(outputPath, outfilename);
+
+                                 console.log('saving sprite sheet : ' + outputName);
+                                 image.write(outputName);
+                                 /*var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
                                  var bits = filename.split('_');
 
                                  var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
 
                                  console.log('saving sprite sheet : ' + outputName);
-                                 image.write(outputName);
+                                 image.write(outputName);*/
                               }
                            });
                         } // end if outputPath !== .
