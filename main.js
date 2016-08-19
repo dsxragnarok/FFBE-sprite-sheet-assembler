@@ -291,8 +291,6 @@ ffbeTool.prototype = {
             var frameImages = [];
             var frameRect = null;
 
-            //var clone = img.clone();
-
             var datasplit = data.replace('\r').split('\n');
 
             var processDataLine = function (line, index) {
@@ -303,7 +301,7 @@ ffbeTool.prototype = {
                   var frameIndex, xPos, yPos, delay, frameImage;
 
                   if (params.length < 2) {
-                     //console.log('params.length was less than 2');
+                     console.log('params.length was less than 2');
                      //return reject('params.length was less than 2');
                      //return true;
                      return resolve(null);
@@ -318,7 +316,6 @@ ffbeTool.prototype = {
                      _.each(frames[frameIndex], function (part, idx) {
                         var crop;
                         var clone = img.clone(); // NOTE: crop is destructive, so we must reclone
-
                         crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                         if (part.blendMode === 1) {
@@ -350,7 +347,7 @@ ffbeTool.prototype = {
                      var frameObject = {};
                      if (rect.width > 0 && rect.height > 0) {
                         frameObject = {
-                           image: image.crop(rect.x, rect.y, rect.width, rect.height),
+                           image: image,
                            rect: rect
                         };
                         frameImages.push(frameObject);
@@ -371,6 +368,8 @@ ffbeTool.prototype = {
                         console.log('Frame ' + frameImages.length + ' done');
                      } // end if rect.width > 0 and rect.height > 0
 
+
+
                      resolve(image);
                   }); // end createImage.then
                }); // end Promise
@@ -388,12 +387,13 @@ ffbeTool.prototype = {
                   width: bottomRight.x - topLeft.x + 10,
                   height: bottomRight.y - topLeft.y + 10
                };
-
+               console.log(frameRect);
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
 
                if (columns === 0 || columns >= frameImages.length) {
+                  console.log('frameRect', frameRect);
                   columns = frameImages.length;
                   createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
@@ -401,8 +401,10 @@ ffbeTool.prototype = {
                            var frameObject = frameImages[index];
                            var frame = frameObject.image;
                            var rect = frameObject.rect;
+                           frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
                            
                            console.log('compositing frame ' + index + ' to strip');
+                           console.log(rect);
 
                            image.composite(frame, index * frameRect.width, 0);
                         }); // end each frame
@@ -456,6 +458,8 @@ ffbeTool.prototype = {
                                  frame = frameObject.image;
                                  rect = frameObject.rect;
 
+                                 frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
+
                                  console.log('compositing frame ' + index + ' to strip');
                                  image.composite(frame, col * frameRect.width, row * frameRect.height);
                               }
@@ -467,14 +471,6 @@ ffbeTool.prototype = {
                      .then(function (image) {
                         if (outputPath !== '.') {
                            fs.mkdirAsync(outputPath).then(function (directory) {
-                              /*var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                              var bits = filename.split('_');
-
-                              var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
-
-                              console.log('saving sprite sheet : ' + outputName);
-                              image.write(outputName);*/
-
                               var filename = path.basename(cgsPath, '.csv');
                               var bits = filename.split('_cgs_');
                               var name = bits[0].substring('unit_'.length);
@@ -497,13 +493,6 @@ ffbeTool.prototype = {
 
                                  console.log('saving sprite sheet : ' + outputName);
                                  image.write(outputName);
-                                 /*var filename = cgsPath.replace(/^.*[\\\/]/, '').slice(0, -4);
-                                 var bits = filename.split('_');
-
-                                 var outputName = outputPath + '/' + bits[1] + '_' + bits[3] + '.png';
-
-                                 console.log('saving sprite sheet : ' + outputName);
-                                 image.write(outputName);*/
                               }
                            });
                         } // end if outputPath !== .
