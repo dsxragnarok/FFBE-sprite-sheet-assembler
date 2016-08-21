@@ -283,6 +283,8 @@ ffbeTool.prototype = {
       var columns = this.columns;
       var outputPath = this.outputPath;
 
+      var ffbeScope = this;
+
       fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
             var topLeft = null;
@@ -380,7 +382,7 @@ ffbeTool.prototype = {
 
             results.then(function (image) {
                console.log('--- Making strip ---');
-               console.log(topLeft);
+               
                frameRect = {
                   x: topLeft.x - 5,
                   y: topLeft.y - 5,
@@ -413,23 +415,25 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              var filename = path.basename(cgsPath, '.csv');
-                              var bits = filename.split('_cgs_');
-                              var name = bits[0].substring('unit_'.length);
-                              var uid = bits[1];
-
-                              var outfilename = uid + '_' + name + '.png';
-                              var outputName = path.join(outputPath, outfilename);
-
-                              console.log('saving image strip : ' + outputName);
-                              image.write(outputName);
+                           return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
+                              return Promise.resolve({
+                                 outputPath: outputPath,
+                                 cgsPath: cgsPath,
+                                 image: image
+                              });
                            });
-                        } // end if outputPath !== .
-                        // TODO: handle the else condition
+                        } else {
+                           return Promise.resolve({
+                              outputPath: outputPath,
+                              cgsPath: cgsPath,
+                              image: image
+                           });
+                        }
                      })
+                     .then(ffbeScope.saveFile)
                      .catch(function (err) {
                         console.error('New Jimp Image error', err);
+                        console.error(err.stack);
                      }); // end createImage.catch
                } else {
                   createImage(columns * frameRect.width, rows * frameRect.height)
@@ -457,37 +461,44 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              var filename = path.basename(cgsPath, '.csv');
-                              var bits = filename.split('_cgs_');
-                              var name = bits[0].substring('unit_'.length);
-                              var uid = bits[1];
-
-                              var outfilename = uid + '_' + name + '.png';
-                              var outputName = path.join(outputPath, outfilename);
-
-                              console.log('saving sprite sheet : ' + outputName);
-                              image.write(outputName);
+                           return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
+                              return Promise.resolve({
+                                 outputPath: outputPath,
+                                 cgsPath: cgsPath,
+                                 image: image
+                              });
                            });
-                        } // end if outputPath !== .
-                     }); // end then
+                        } else {
+                           return Promise.resolve({
+                              outputPath: outputPath,
+                              cgsPath: cgsPath,
+                              image: image
+                           });
+                        }
+                     })
+                     .then(ffbeScope.saveFile)
+                     .catch(function (err) {
+                        console.error('New Jimp Image error', err);
+                        console.error(err.stack);
+                     }); // end createImage.catch
                } // end if-else
             }); // end results.then
 
          }); // end readFileAsync
    }, // end makeStrip
 
-   saveFile: function (directory, cgsPath, image) {
-      var pathObject = path.parse(cgsPath);
+   saveFile: function (saveObject) {
+      console.log(saveObject.cgsPath);
+      var pathObject = path.parse(saveObject.cgsPath);
       var bits = pathObject.name.split('_cgs_');
       var action = bits[0].substring('unit_'.length);
       var uid = bits[1];
 
-      var filename = uid + '_' + name + '.png';
-      var outputName = path.join(this.outputPath, outfilename);
+      var filename = uid + '_' + action + '.png';
+      var outputName = path.join(saveObject.outputPath, filename);
 
       console.log('saving sprite strip : ' + outputName);
-      image.write(outputName);
+      saveObject.image.write(outputName);
    }
 };
 
