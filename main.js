@@ -1,6 +1,6 @@
 var Promise = require('bluebird');
 var fs = Promise.promisifyAll(require('fs'));
-var os = require('os');
+var mkdirp = Promise.promisifyAll(require('mkdirp'));
 var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
@@ -197,7 +197,6 @@ ffbeTool.prototype = {
                               break;
                            default:
                               console.log("Invalid next type!");
-                              //process.exit(1);
                               return reject("Invalid next type!");
                         } // end switch
 
@@ -302,8 +301,9 @@ ffbeTool.prototype = {
 
                   if (params.length < 2) {
                      console.log('params.length was less than 2');
-                     //return reject('params.length was less than 2');
-                     //return true;
+                     
+                     // resolving this as null, otherwise the entire 
+                     // Promise is rejected
                      return resolve(null);
                   }
 
@@ -413,7 +413,7 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           fs.mkdirAsync(outputPath).then(function (directory) {
+                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
                               var filename = path.basename(cgsPath, '.csv');
                               var bits = filename.split('_cgs_');
                               var name = bits[0].substring('unit_'.length);
@@ -424,19 +424,6 @@ ffbeTool.prototype = {
 
                               console.log('saving image strip : ' + outputName);
                               image.write(outputName);
-                           }).catch(function (err) {
-                              if (err.code === 'EEXIST') {
-                                 var filename = path.basename(cgsPath, '.csv');
-                                 var bits = filename.split('_cgs_');
-                                 var name = bits[0].substring('unit_'.length);
-                                 var uid = bits[1];
-
-                                 var outfilename = uid + '_' + name + '.png';
-                                 var outputName = path.join(outputPath, outfilename);
-
-                                 console.log('saving image strip : ' + outputName);
-                                 image.write(outputName);
-                              }
                            });
                         } // end if outputPath !== .
                         // TODO: handle the else condition
@@ -470,7 +457,7 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           fs.mkdirAsync(outputPath).then(function (directory) {
+                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
                               var filename = path.basename(cgsPath, '.csv');
                               var bits = filename.split('_cgs_');
                               var name = bits[0].substring('unit_'.length);
@@ -481,19 +468,6 @@ ffbeTool.prototype = {
 
                               console.log('saving sprite sheet : ' + outputName);
                               image.write(outputName);
-                           }).catch(function (err) {
-                              if (err.code === 'EEXIST') {
-                                 var filename = path.basename(cgsPath, '.csv');
-                                 var bits = filename.split('_cgs_');
-                                 var name = bits[0].substring('unit_'.length);
-                                 var uid = bits[1];
-
-                                 var outfilename = uid + '_' + name + '.png';
-                                 var outputName = path.join(outputPath, outfilename);
-
-                                 console.log('saving sprite sheet : ' + outputName);
-                                 image.write(outputName);
-                              }
                            });
                         } // end if outputPath !== .
                      }); // end then
@@ -501,7 +475,9 @@ ffbeTool.prototype = {
             }); // end results.then
 
          }); // end readFileAsync
-   } // end makeStrip
+   }, // end makeStrip
+
+   placeholder: null
 };
 
 var main = function (argv) {
