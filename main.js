@@ -477,7 +477,18 @@ ffbeTool.prototype = {
          }); // end readFileAsync
    }, // end makeStrip
 
-   placeholder: null
+   saveFile: function (directory, cgsPath, image) {
+      var pathObject = path.parse(cgsPath);
+      var bits = pathObject.name.split('_cgs_');
+      var action = bits[0].substring('unit_'.length);
+      var uid = bits[1];
+
+      var filename = uid + '_' + name + '.png';
+      var outputName = path.join(this.outputPath, outfilename);
+
+      console.log('saving sprite strip : ' + outputName);
+      image.write(outputName);
+   }
 };
 
 var main = function (argv) {
