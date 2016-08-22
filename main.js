@@ -327,7 +327,10 @@ ffbeTool.prototype = {
 
                         if (part.rotate !== 0) {
                            console.log(' -- rotating part: ' + part.rotate);
-                           crop.rotate(360 - part.rotate, true);
+                           // NOTE: Jimp rotates clockwise whereas the cgg setting for
+                           // rotation is given in terms of counter-clockwise rotation
+                           // So multiply by -1 to reverse it.
+                           crop.rotate(-1 * part.rotate, true);
                         }
 
                         if (part.flipX || part.flipY) {
