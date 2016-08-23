@@ -12,7 +12,7 @@ to assemble the sprite sheet.
 
 ### Usage
 ```
-node main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]
+node main num [-a anim] [-c columns] [-i inDir] [-o outDir]
 
 ```
 * num: (required) the unit ID number

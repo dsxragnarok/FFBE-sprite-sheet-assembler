@@ -2,6 +2,9 @@
 
 ### Changes
 
+* Flip part image before applying rotation
+* Some optimizations
+* Removed the [-e] option to include empty frames
 * Removed the [-d] divider option
 * Promisification of callbacks
 

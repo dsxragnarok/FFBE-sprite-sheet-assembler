@@ -5,13 +5,12 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
    this.animName = '';
    this.columns = 0;
-   this.includeEmpty = false;
    this.inputPath = '.';
    this.outputPath = '.';
 
@@ -133,9 +132,6 @@ ffbeTool.prototype = {
                break;
             case '-c':
                this.columns = parseInt(argv[++i]);
-               break;
-            case '-e':
-               this.includeEmpty = true;
                break;
             case '-i':
                this.inputPath = argv[++i];
