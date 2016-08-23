@@ -333,18 +333,17 @@ ffbeTool.prototype = {
                            crop = blend(crop);
                         }
 
+                        if (part.flipX || part.flipY) {
+                           console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
+                           crop.flip(part.flipX, part.flipY);
+                        }
+
                         if (part.rotate !== 0) {
                            console.log(' -- rotating part: ' + part.rotate);
-                           console.log(part);
                            // NOTE: Jimp rotates clockwise whereas the cgg setting for
                            // rotation is given in terms of counter-clockwise rotation
                            // So multiply by -1 to reverse it.
                            crop.rotate(-1 * part.rotate, true);
-                        }
-
-                        if (part.flipX || part.flipY) {
-                           console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
-                           crop.flip(part.flipX, part.flipY);
                         }
 
                         if (part.opacity < 100) {
