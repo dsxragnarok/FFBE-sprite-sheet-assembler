@@ -155,7 +155,7 @@ ffbeTool.prototype = {
 
       return fs.readFileAsync(this.cggPath, 'utf8')
          .then(function (data) {
-            var datasplit = data.split('\r\n');
+            var datasplit = data.replace('\r').split('\n');
 
             var processDataLine = function (line, index) {
                return new Promise(function (resolve, reject) {
@@ -167,6 +167,9 @@ ffbeTool.prototype = {
                      parts = [], 
                      part = null, 
                      i = 0;
+
+                  /*console.log('processing line ' + index);
+                  console.log('[' + line + ']');*/
 
                   if (params.length >= 2) {
                      anchor = parseInt(params[0]);
@@ -209,6 +212,10 @@ ffbeTool.prototype = {
                         part.imgHeight = parseInt(params[i++]);
                         part.pageID = parseInt(params[i++]);
 
+                        part.lineIndex = index;
+                        part.line = line;
+                        part.index = partInd;
+
                         //console.log(part);
 
                         parts.push(part);
@@ -216,7 +223,8 @@ ffbeTool.prototype = {
 
                      return resolve(parts.reverse());
                   } else {
-                     console.log('params.length was less than 2');
+                     console.log('line ' + index + ' : params.length was less than 2');
+                     console.log('[' + line + ']');
                      return resolve(null);
                   }
                }); // end Promise 
@@ -321,12 +329,13 @@ ffbeTool.prototype = {
                         crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                         if (part.blendMode === 1) {
-                           console.log(' -- blending part -- ');
+                           console.log(' -- blending part -- ' );
                            crop = blend(crop);
                         }
 
                         if (part.rotate !== 0) {
                            console.log(' -- rotating part: ' + part.rotate);
+                           console.log(part);
                            // NOTE: Jimp rotates clockwise whereas the cgg setting for
                            // rotation is given in terms of counter-clockwise rotation
                            // So multiply by -1 to reverse it.
