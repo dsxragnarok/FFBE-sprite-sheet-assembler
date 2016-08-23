@@ -5,13 +5,12 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
    this.animName = '';
    this.columns = 0;
-   this.includeEmpty = false;
    this.inputPath = '.';
    this.outputPath = '.';
 
@@ -134,9 +133,6 @@ ffbeTool.prototype = {
             case '-c':
                this.columns = parseInt(argv[++i]);
                break;
-            case '-e':
-               this.includeEmpty = true;
-               break;
             case '-i':
                this.inputPath = argv[++i];
                break;
@@ -155,7 +151,7 @@ ffbeTool.prototype = {
 
       return fs.readFileAsync(this.cggPath, 'utf8')
          .then(function (data) {
-            var datasplit = data.split('\r\n');
+            var datasplit = data.replace('\r').split('\n');
 
             var processDataLine = function (line, index) {
                return new Promise(function (resolve, reject) {
@@ -209,14 +205,16 @@ ffbeTool.prototype = {
                         part.imgHeight = parseInt(params[i++]);
                         part.pageID = parseInt(params[i++]);
 
-                        //console.log(part);
+                        part.lineIndex = index;
+                        part.line = line;
+                        part.index = partInd;
 
                         parts.push(part);
                      }); // end inner _.each
 
                      return resolve(parts.reverse());
                   } else {
-                     console.log('params.length was less than 2');
+                     console.log('line ' + index + ' : params.length was less than 2');
                      return resolve(null);
                   }
                }); // end Promise 
@@ -253,7 +251,6 @@ ffbeTool.prototype = {
          console.log(' * No animName *');
          return png.then(_.bind(function (image) {
             fs.readdirAsync(this.inputPath).map(_.bind(function (file) {
-               console.log('- processing ' + file);
 
                var extension = path.extname(file);
                cgsPath = path.join(this.inputPath, file);
@@ -283,7 +280,9 @@ ffbeTool.prototype = {
       var columns = this.columns;
       var outputPath = this.outputPath;
 
-      fs.readFileAsync(cgsPath, 'utf8')
+      var ffbeScope = this;
+
+      return fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
             var topLeft = null;
             var bottomRight = null;
@@ -319,13 +318,8 @@ ffbeTool.prototype = {
                         crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                         if (part.blendMode === 1) {
-                           console.log(' -- blending part -- ');
+                           console.log(' -- blending part -- ' );
                            crop = blend(crop);
-                        }
-
-                        if (part.rotate !== 0) {
-                           console.log(' -- rotating part: ' + part.rotate);
-                           crop.rotate(360 - part.rotate, true);
                         }
 
                         if (part.flipX || part.flipY) {
@@ -333,12 +327,20 @@ ffbeTool.prototype = {
                            crop.flip(part.flipX, part.flipY);
                         }
 
+                        if (part.rotate !== 0) {
+                           console.log(' -- rotating part: ' + part.rotate);
+                           // NOTE: Jimp rotates clockwise whereas the cgg setting for
+                           // rotation is given in terms of counter-clockwise rotation
+                           // So multiply by -1 to reverse it.
+                           crop.rotate(-1 * part.rotate, true);
+                        }
+
                         if (part.opacity < 100) {
                            console.log(' -- reducing opacity: ' + part.opacity);
                            crop.opacity(part.opacity / 100);
                         }
 
-                        console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
+                        console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
                         
                         image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                      }); // end part.each
@@ -378,22 +380,21 @@ ffbeTool.prototype = {
             var processing = datasplit.map(processDataLine)
             var results = Promise.all(processing);
 
-            results.then(function (image) {
+            return results.then(function (image) {
                console.log('--- Making strip ---');
-               console.log(topLeft);
+               
                frameRect = {
                   x: topLeft.x - 5,
                   y: topLeft.y - 5,
                   width: bottomRight.x - topLeft.x + 10,
                   height: bottomRight.y - topLeft.y + 10
                };
-               console.log(frameRect);
+               
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
 
                if (columns === 0 || columns >= frameImages.length) {
-                  console.log('frameRect', frameRect);
                   columns = frameImages.length;
                   createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
@@ -403,8 +404,7 @@ ffbeTool.prototype = {
                            var rect = frameObject.rect;
                            frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
                            
-                           console.log('compositing frame ' + index + ' to strip');
-                           console.log(rect);
+                           console.log('compositing frame ' + (index + 1) + ' to strip');
 
                            image.composite(frame, index * frameRect.width, 0);
                         }); // end each frame
@@ -413,24 +413,22 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              var filename = path.basename(cgsPath, '.csv');
-                              var bits = filename.split('_cgs_');
-                              var name = bits[0].substring('unit_'.length);
-                              var uid = bits[1];
-
-                              var outfilename = uid + '_' + name + '.png';
-                              var outputName = path.join(outputPath, outfilename);
-
-                              console.log('saving image strip : ' + outputName);
-                              image.write(outputName);
+                           return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
+                              return Promise.resolve({
+                                 outputPath: outputPath,
+                                 cgsPath: cgsPath,
+                                 image: image
+                              });
                            });
-                        } // end if outputPath !== .
-                        // TODO: handle the else condition
+                        } else {
+                           return Promise.resolve({
+                              outputPath: outputPath,
+                              cgsPath: cgsPath,
+                              image: image
+                           });
+                        }
                      })
-                     .catch(function (err) {
-                        console.error('New Jimp Image error', err);
-                     }); // end createImage.catch
+                     .then(ffbeScope.saveFile);
                } else {
                   createImage(columns * frameRect.width, rows * frameRect.height)
                      .then(function (image) {
@@ -447,7 +445,7 @@ ffbeTool.prototype = {
 
                                  frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
 
-                                 console.log('compositing frame ' + index + ' to strip');
+                                 console.log('compositing frame ' + (index + 1) + ' to sheet');
                                  image.composite(frame, col * frameRect.width, row * frameRect.height);
                               }
                            }); // end each col
@@ -457,37 +455,39 @@ ffbeTool.prototype = {
                      }) // end createImage.then
                      .then(function (image) {
                         if (outputPath !== '.') {
-                           mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              var filename = path.basename(cgsPath, '.csv');
-                              var bits = filename.split('_cgs_');
-                              var name = bits[0].substring('unit_'.length);
-                              var uid = bits[1];
-
-                              var outfilename = uid + '_' + name + '.png';
-                              var outputName = path.join(outputPath, outfilename);
-
-                              console.log('saving sprite sheet : ' + outputName);
-                              image.write(outputName);
+                           return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
+                              return Promise.resolve({
+                                 outputPath: outputPath,
+                                 cgsPath: cgsPath,
+                                 image: image
+                              });
                            });
-                        } // end if outputPath !== .
-                     }); // end then
+                        } else {
+                           return Promise.resolve({
+                              outputPath: outputPath,
+                              cgsPath: cgsPath,
+                              image: image
+                           });
+                        }
+                     })
+                     .then(ffbeScope.saveFile);
                } // end if-else
             }); // end results.then
 
          }); // end readFileAsync
    }, // end makeStrip
 
-   saveFile: function (directory, cgsPath, image) {
-      var pathObject = path.parse(cgsPath);
+   saveFile: function (saveObject) {
+      var pathObject = path.parse(saveObject.cgsPath);
       var bits = pathObject.name.split('_cgs_');
       var action = bits[0].substring('unit_'.length);
       var uid = bits[1];
 
-      var filename = uid + '_' + name + '.png';
-      var outputName = path.join(this.outputPath, outfilename);
+      var filename = uid + '_' + action + '.png';
+      var outputName = path.join(saveObject.outputPath, filename);
 
       console.log('saving sprite strip : ' + outputName);
-      image.write(outputName);
+      saveObject.image.write(outputName);
    }
 };
 
@@ -495,7 +495,7 @@ var main = function (argv) {
    var ffbe = new ffbeTool();
 
    if (argv.length < 3) {
-      console.log(usage);
+      console.info(usage);
       return;
    }
 
@@ -508,7 +508,10 @@ var main = function (argv) {
    ffbe.processCommandArgs(process.argv);
 
    ffbe.readCggAsync(ffbe.id)
-      .then(_.bind(ffbe.readPngAsync, ffbe));
+      .then(_.bind(ffbe.readPngAsync, ffbe))
+      .catch(function (err) {
+         console.error(err);
+      });
 };
 
 main(process.argv);
