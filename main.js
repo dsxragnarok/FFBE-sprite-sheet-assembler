@@ -168,9 +168,6 @@ ffbeTool.prototype = {
                      part = null, 
                      i = 0;
 
-                  /*console.log('processing line ' + index);
-                  console.log('[' + line + ']');*/
-
                   if (params.length >= 2) {
                      anchor = parseInt(params[0]);
                      count = parseInt(params[1]);
@@ -216,15 +213,12 @@ ffbeTool.prototype = {
                         part.line = line;
                         part.index = partInd;
 
-                        //console.log(part);
-
                         parts.push(part);
                      }); // end inner _.each
 
                      return resolve(parts.reverse());
                   } else {
                      console.log('line ' + index + ' : params.length was less than 2');
-                     console.log('[' + line + ']');
                      return resolve(null);
                   }
                }); // end Promise 
@@ -261,7 +255,6 @@ ffbeTool.prototype = {
          console.log(' * No animName *');
          return png.then(_.bind(function (image) {
             fs.readdirAsync(this.inputPath).map(_.bind(function (file) {
-               console.log('- processing ' + file);
 
                var extension = path.extname(file);
                cgsPath = path.join(this.inputPath, file);
@@ -293,7 +286,7 @@ ffbeTool.prototype = {
 
       var ffbeScope = this;
 
-      fs.readFileAsync(cgsPath, 'utf8')
+      return fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
             var topLeft = null;
             var bottomRight = null;
@@ -351,7 +344,7 @@ ffbeTool.prototype = {
                            crop.opacity(part.opacity / 100);
                         }
 
-                        console.log(' -- writing part ' + index + ' ' + frameIndex + ' - ' + idx);
+                        console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
                         
                         image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                      }); // end part.each
@@ -391,7 +384,7 @@ ffbeTool.prototype = {
             var processing = datasplit.map(processDataLine)
             var results = Promise.all(processing);
 
-            results.then(function (image) {
+            return results.then(function (image) {
                console.log('--- Making strip ---');
                
                frameRect = {
@@ -400,13 +393,12 @@ ffbeTool.prototype = {
                   width: bottomRight.x - topLeft.x + 10,
                   height: bottomRight.y - topLeft.y + 10
                };
-               console.log(frameRect);
+               
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
 
                if (columns === 0 || columns >= frameImages.length) {
-                  console.log('frameRect', frameRect);
                   columns = frameImages.length;
                   createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
@@ -416,8 +408,7 @@ ffbeTool.prototype = {
                            var rect = frameObject.rect;
                            frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
                            
-                           console.log('compositing frame ' + index + ' to strip');
-                           console.log(rect);
+                           console.log('compositing frame ' + (index + 1) + ' to strip');
 
                            image.composite(frame, index * frameRect.width, 0);
                         }); // end each frame
@@ -441,11 +432,7 @@ ffbeTool.prototype = {
                            });
                         }
                      })
-                     .then(ffbeScope.saveFile)
-                     .catch(function (err) {
-                        console.error('New Jimp Image error', err);
-                        console.error(err.stack);
-                     }); // end createImage.catch
+                     .then(ffbeScope.saveFile);
                } else {
                   createImage(columns * frameRect.width, rows * frameRect.height)
                      .then(function (image) {
@@ -462,7 +449,7 @@ ffbeTool.prototype = {
 
                                  frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
 
-                                 console.log('compositing frame ' + index + ' to strip');
+                                 console.log('compositing frame ' + (index + 1) + ' to sheet');
                                  image.composite(frame, col * frameRect.width, row * frameRect.height);
                               }
                            }); // end each col
@@ -487,11 +474,7 @@ ffbeTool.prototype = {
                            });
                         }
                      })
-                     .then(ffbeScope.saveFile)
-                     .catch(function (err) {
-                        console.error('New Jimp Image error', err);
-                        console.error(err.stack);
-                     }); // end createImage.catch
+                     .then(ffbeScope.saveFile);
                } // end if-else
             }); // end results.then
 
@@ -499,7 +482,6 @@ ffbeTool.prototype = {
    }, // end makeStrip
 
    saveFile: function (saveObject) {
-      console.log(saveObject.cgsPath);
       var pathObject = path.parse(saveObject.cgsPath);
       var bits = pathObject.name.split('_cgs_');
       var action = bits[0].substring('unit_'.length);
@@ -517,7 +499,7 @@ var main = function (argv) {
    var ffbe = new ffbeTool();
 
    if (argv.length < 3) {
-      console.log(usage);
+      console.info(usage);
       return;
    }
 
@@ -530,7 +512,10 @@ var main = function (argv) {
    ffbe.processCommandArgs(process.argv);
 
    ffbe.readCggAsync(ffbe.id)
-      .then(_.bind(ffbe.readPngAsync, ffbe));
+      .then(_.bind(ffbe.readPngAsync, ffbe))
+      .catch(function (err) {
+         console.error(err);
+      });
 };
 
 main(process.argv);
