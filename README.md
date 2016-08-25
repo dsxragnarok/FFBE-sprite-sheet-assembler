@@ -12,14 +12,15 @@ to assemble the sprite sheet.
 
 ### Usage
 ```
-node main num [-a anim] [-c columns] [-i inDir] [-o outDir]
+node main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]
 
 ```
-* num: (required) the unit ID number
-* -a: the animation name (ie. atk, idle, dead, win, etc.)
-* -c: the number of columns in the sheet, if not specified the output will be a single-row strip
-* -i: the input path, defaults to current directory
-* -o: the output path, defaults to current directory
+* num: (required) the unit ID number, must be the first argument
+* -a: The animation name (ie. atk, idle, dead, win, etc.)
+* -c: The number of columns in the sheet, if not specified the output will be a single-row strip
+* -e: If this option is included, the strips will include any empty frames. By default empty frames are excluded
+* -i: The input path, defaults to current directory
+* -o: The output path, defaults to current directory
 
 
 ### References

@@ -5,7 +5,7 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
@@ -13,6 +13,7 @@ var ffbeTool = function () {
    this.columns = 0;
    this.inputPath = '.';
    this.outputPath = '.';
+   this.includeEmpty = false;
 
    this.cggPath = null;
    this.pngPath = null;
@@ -132,6 +133,9 @@ ffbeTool.prototype = {
                break;
             case '-c':
                this.columns = parseInt(argv[++i]);
+               break;
+            case '-e':
+               this.includeEmpty = true;
                break;
             case '-i':
                this.inputPath = argv[++i];
@@ -279,6 +283,7 @@ ffbeTool.prototype = {
 
       var columns = this.columns;
       var outputPath = this.outputPath;
+      var includeEmpty = this.includeEmpty;
 
       var ffbeScope = this;
 
@@ -346,12 +351,12 @@ ffbeTool.prototype = {
                      }); // end part.each
 
                      var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
-                     var frameObject = {};
+                     var frameObject = {
+                        image: image,
+                        rect: rect
+                     };
+
                      if (rect.width > 0 && rect.height > 0) {
-                        frameObject = {
-                           image: image,
-                           rect: rect
-                        };
                         frameImages.push(frameObject);
 
                         if (topLeft === null) {
@@ -368,8 +373,9 @@ ffbeTool.prototype = {
                         }
 
                         console.log('Frame ' + frameImages.length + ' done');
+                     } else if (includeEmpty) { 
+                        frameImages.push(frameObject);
                      } // end if rect.width > 0 and rect.height > 0
-
 
 
                      resolve(image);
