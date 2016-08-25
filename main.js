@@ -122,6 +122,93 @@ var blend = function (image) {
    return image;
 };
 
+var convertColorRange01 = function (r, g, b, a) {
+   var color = {};
+   if (typeof r === 'object') {
+      color = r;
+   } else {
+      color.r = r;
+      color.g = g;
+      color.b = b;
+      color.a = a;
+   }
+
+   return {
+      r: color.r / 255,
+      g: color.g / 255,
+      b: color.b / 255,
+      a: color.a / 255
+   };
+};
+
+var convertColorRange255 = function (r, g, b, a) {
+   var color = {};
+   if (typeof r === 'object') {
+      color = r;
+   } else {
+      color.r = r;
+      color.g = g;
+      color.b = b;
+      color.a = a;
+   }
+
+   return {
+      r: Math.round(color.r * 255),
+      g: Math.round(color.g * 255),
+      b: Math.round(color.b * 255),
+      a: Math.round(color.a * 255)
+   };
+};
+
+//image.composite(blendedImage, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+var blendMerge = function (main, part, xPos, yPos) {
+   var mainXPosition = xPos;
+   var mainYPosition = yPos;
+
+   var blended = part.clone();
+   //blended.composite(part, xPos, yPos);
+
+   _.each(_.range(part.bitmap.width), function (x) {
+      _.each(_.range(part.bitmap.height), function (y) {
+         var mainX = mainXPosition + x;
+         var mainY = mainYPosition + y;
+
+         var partPixel = convertColorRange01(Jimp.intToRGBA(part.getPixelColor(x, y)));
+         var mainPixel = convertColorRange01(Jimp.intToRGBA(main.getPixelColor(mainX, mainY)));
+
+         if (partPixel.a !== 0) {
+            // --??? -> (fgcolor * fgalpha) + (bgcolor * (1.0 - fgalpha)) [doesn't work?]
+            ////////////////////////////////////
+            // alpha_final = alpha_bg + alpha_fg - alpha_bg * alpha_fg
+            // colour_final_a = colour_fg_a + colour_bg_a * (1 - alpha_fg)
+            var alphaFinal = (mainPixel.a + partPixel.a) - (mainPixel.a * partPixel.a);
+            var mainRedAlpha = mainPixel.r * mainPixel.a;
+            var mainGreenAlpha = mainPixel.g * mainPixel.a;
+            var mainBlueAlpha = mainPixel.b * mainPixel.a;
+
+            var partRedAlpha = partPixel.r * partPixel.a;
+            var partGreenAlpha = partPixel.g * partPixel.a;
+            var partBlueAlpha = partPixel.b * partPixel.a;
+
+            var redFinalAlpha = partRedAlpha + mainRedAlpha * (1 - partPixel.a);
+            var greenFinalAlpha = partGreenAlpha + mainGreenAlpha * (1 - partPixel.a);
+            var blueFinalAlpha = partBlueAlpha + mainBlueAlpha * (1 - partPixel.a);
+
+            var red = redFinalAlpha / alphaFinal;
+            var green = greenFinalAlpha / alphaFinal;
+            var blue = blueFinalAlpha / alphaFinal;
+
+            var finalColor = convertColorRange255(red, green, blue, alphaFinal);
+
+            blended.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), x, y);
+         }
+
+      }); // end y
+   }); // end x
+
+   return blended;
+}; // end blendMerge
+
 ffbeTool.prototype = {
    processCommandArgs: function (argv) {
       var i = 3, len = argv.length;
@@ -324,7 +411,8 @@ ffbeTool.prototype = {
 
                         if (part.blendMode === 1) {
                            console.log(' -- blending part -- ' );
-                           crop = blend(crop);
+                           //crop = blend(crop);
+                           crop = blendMerge(image, crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                         }
 
                         if (part.flipX || part.flipY) {
@@ -346,8 +434,14 @@ ffbeTool.prototype = {
                         }
 
                         console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
-                        
-                        image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+
+                        //if (part.blendMode === 1) {
+                        //   console.log(' -- blending part -- ' );
+                           //crop = blend(crop);
+                        //   image = blendMerge(image, crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                        //} else {
+                           image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                        //}
                      }); // end part.each
 
                      var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
