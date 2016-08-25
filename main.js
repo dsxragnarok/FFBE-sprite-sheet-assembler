@@ -160,6 +160,43 @@ var convertColorRange255 = function (r, g, b, a) {
    };
 };
 
+var blender = function (image) {
+   _.each(_.range(image.bitmap.width), function (x) {
+      _.each(_.range(image.bitmap.height), function (y) {
+         var pixel = convertColorRange01(Jimp.intToRGBA(image.getPixelColor(x, y)));
+
+         var alphaFinal = (0 + pixel.a) - (0 * pixel.a);
+         var mainRedAlpha = 0;
+         var mainGreenAlpha = 0;
+         var mainBlueAlpha = 0;
+
+         if (pixel.a !== 0) {
+            var partRedAlpha = pixel.r * pixel.a;
+            var partGreenAlpha = pixel.g * pixel.a;
+            var partBlueAlpha = pixel.b * pixel.a;
+
+            var redFinalAlpha = partRedAlpha + mainRedAlpha * (1 - pixel.a);
+            var greenFinalAlpha = partGreenAlpha + mainGreenAlpha * (1 - pixel.a);
+            var blueFinalAlpha = partBlueAlpha + mainBlueAlpha * (1 - pixel.a);
+
+            var red = redFinalAlpha / alphaFinal;
+            var green = greenFinalAlpha / alphaFinal;
+            var blue = blueFinalAlpha / alphaFinal;
+
+            var finalColor = convertColorRange255(red, green, blue, alphaFinal);
+
+            console.log(finalColor);
+
+            image.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), x, y);
+         }
+      }); // end y
+   }); // end x
+
+   return image;
+};
+
+// TODO: read blend modes : https://www.w3.org/TR/compositing-1/
+// ISSUE: It appears the finalAlpha always results in 255.
 //image.composite(blendedImage, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
 var blendMerge = function (main, part, xPos, yPos) {
    var mainXPosition = xPos;
@@ -199,6 +236,7 @@ var blendMerge = function (main, part, xPos, yPos) {
             var blue = blueFinalAlpha / alphaFinal;
 
             var finalColor = convertColorRange255(red, green, blue, alphaFinal);
+            console.log(finalColor);
 
             blended.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), x, y);
          }
@@ -412,6 +450,7 @@ ffbeTool.prototype = {
                         if (part.blendMode === 1) {
                            console.log(' -- blending part -- ' );
                            //crop = blend(crop);
+                           //crop = blender(crop);
                            crop = blendMerge(image, crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                         }
 
