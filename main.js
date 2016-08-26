@@ -198,47 +198,45 @@ var blender = function (image) {
 // TODO: read blend modes : https://www.w3.org/TR/compositing-1/
 // ISSUE: It appears the finalAlpha always results in 255.
 //image.composite(blendedImage, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-var blendMerge = function (main, part, xPos, yPos) {
-   var mainXPosition = xPos;
-   var mainYPosition = yPos;
+var blendMerge = function (src, dst, dstX, dstY) {
+   var blended = dst.clone();
+   //blended.composite(src, xPos, yPos);
 
-   var blended = part.clone();
-   //blended.composite(part, xPos, yPos);
+   _.each(_.range(src.bitmap.width), function (x) {
+      _.each(_.range(src.bitmap.height), function (y) {
+         var dx = dstX + x;
+         var dy = dstY + y;
 
-   _.each(_.range(part.bitmap.width), function (x) {
-      _.each(_.range(part.bitmap.height), function (y) {
-         var mainX = mainXPosition + x;
-         var mainY = mainYPosition + y;
+         var srcPixel = convertColorRange01(Jimp.intToRGBA(src.getPixelColor(x, y)));
+         var dstPixel = convertColorRange01(Jimp.intToRGBA(dst.getPixelColor(dx, dy)));
 
-         var partPixel = convertColorRange01(Jimp.intToRGBA(part.getPixelColor(x, y)));
-         var mainPixel = convertColorRange01(Jimp.intToRGBA(main.getPixelColor(mainX, mainY)));
-
-         if (partPixel.a !== 0) {
+         if (srcPixel.a !== 0) {
             // --??? -> (fgcolor * fgalpha) + (bgcolor * (1.0 - fgalpha)) [doesn't work?]
             ////////////////////////////////////
             // alpha_final = alpha_bg + alpha_fg - alpha_bg * alpha_fg
             // colour_final_a = colour_fg_a + colour_bg_a * (1 - alpha_fg)
-            var alphaFinal = (mainPixel.a + partPixel.a) - (mainPixel.a * partPixel.a);
-            var mainRedAlpha = mainPixel.r * mainPixel.a;
-            var mainGreenAlpha = mainPixel.g * mainPixel.a;
-            var mainBlueAlpha = mainPixel.b * mainPixel.a;
+            srcPixel.a = srcPixel.a * .5; // testing reducing the src alpha by 50%
 
-            var partRedAlpha = partPixel.r * partPixel.a;
-            var partGreenAlpha = partPixel.g * partPixel.a;
-            var partBlueAlpha = partPixel.b * partPixel.a;
+            var alphaFinal = (dstPixel.a + srcPixel.a) - (dstPixel.a * srcPixel.a);
+            var dstRedAlpha = dstPixel.r * dstPixel.a;
+            var dstGreenAlpha = dstPixel.g * dstPixel.a;
+            var dstBlueAlpha = dstPixel.b * dstPixel.a;
 
-            var redFinalAlpha = partRedAlpha + mainRedAlpha * (1 - partPixel.a);
-            var greenFinalAlpha = partGreenAlpha + mainGreenAlpha * (1 - partPixel.a);
-            var blueFinalAlpha = partBlueAlpha + mainBlueAlpha * (1 - partPixel.a);
+            var srcRedAlpha = srcPixel.r * srcPixel.a;
+            var srcGreenAlpha = srcPixel.g * srcPixel.a;
+            var srcBlueAlpha = srcPixel.b * srcPixel.a;
+
+            var redFinalAlpha = srcRedAlpha + dstRedAlpha * (1 - srcPixel.a);
+            var greenFinalAlpha = srcGreenAlpha + dstGreenAlpha * (1 - srcPixel.a);
+            var blueFinalAlpha = srcBlueAlpha + dstBlueAlpha * (1 - srcPixel.a);
 
             var red = redFinalAlpha / alphaFinal;
             var green = greenFinalAlpha / alphaFinal;
             var blue = blueFinalAlpha / alphaFinal;
 
             var finalColor = convertColorRange255(red, green, blue, alphaFinal);
-            console.log(finalColor);
 
-            blended.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), x, y);
+            blended.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), dx, dy);
          }
 
       }); // end y
@@ -451,7 +449,7 @@ ffbeTool.prototype = {
                            console.log(' -- blending part -- ' );
                            //crop = blend(crop);
                            //crop = blender(crop);
-                           crop = blendMerge(image, crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
+                           crop = blendMerge(crop, image, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                         }
 
                         if (part.flipX || part.flipY) {
