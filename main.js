@@ -117,16 +117,6 @@ var blend = function (image) {
             pixel = convertColorRange255(pixel);
             image.setPixelColor(Jimp.rgbaToInt(pixel.r, pixel.g, pixel.b, pixel.a), x, y);
          }
-         // var hex = image.getPixelColor(x, y);
-         // var pixel = Jimp.intToRGBA(hex);
-         //
-         // var alpha, newPixel;
-         //
-         // if (pixel.a !== 0) {
-         //    alpha = parseInt((pixel.r + pixel.g + pixel.b) / 3);
-         //    newPixel = Jimp.rgbaToInt(pixel.r, pixel.g, pixel.b, alpha);
-         //    image.setPixelColor(newPixel, x, y);
-         // }
       }); // end y
    }); // end x
 
@@ -170,91 +160,6 @@ var convertColorRange255 = function (r, g, b, a) {
       a: Math.round(color.a * 255)
    };
 };
-
-var blender = function (image) {
-   _.each(_.range(image.bitmap.width), function (x) {
-      _.each(_.range(image.bitmap.height), function (y) {
-         var pixel = convertColorRange01(Jimp.intToRGBA(image.getPixelColor(x, y)));
-
-         var alphaFinal = (0 + pixel.a) - (0 * pixel.a);
-         var mainRedAlpha = 0;
-         var mainGreenAlpha = 0;
-         var mainBlueAlpha = 0;
-
-         if (pixel.a !== 0) {
-            var partRedAlpha = pixel.r * pixel.a;
-            var partGreenAlpha = pixel.g * pixel.a;
-            var partBlueAlpha = pixel.b * pixel.a;
-
-            var redFinalAlpha = partRedAlpha + mainRedAlpha * (1 - pixel.a);
-            var greenFinalAlpha = partGreenAlpha + mainGreenAlpha * (1 - pixel.a);
-            var blueFinalAlpha = partBlueAlpha + mainBlueAlpha * (1 - pixel.a);
-
-            var red = redFinalAlpha / alphaFinal;
-            var green = greenFinalAlpha / alphaFinal;
-            var blue = blueFinalAlpha / alphaFinal;
-
-            var finalColor = convertColorRange255(red, green, blue, alphaFinal);
-
-            console.log(finalColor);
-
-            image.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), x, y);
-         }
-      }); // end y
-   }); // end x
-
-   return image;
-};
-
-// TODO: read blend modes : https://www.w3.org/TR/compositing-1/
-// ISSUE: It appears the finalAlpha always results in 255.
-//image.composite(blendedImage, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-var blendMerge = function (src, dst, dstX, dstY) {
-   var blended = dst.clone();
-   //blended.composite(src, xPos, yPos);
-
-   _.each(_.range(src.bitmap.width), function (x) {
-      _.each(_.range(src.bitmap.height), function (y) {
-         var dx = dstX + x;
-         var dy = dstY + y;
-
-         var srcPixel = convertColorRange01(Jimp.intToRGBA(src.getPixelColor(x, y)));
-         var dstPixel = convertColorRange01(Jimp.intToRGBA(dst.getPixelColor(dx, dy)));
-
-         if (srcPixel.a !== 0) {
-            // --??? -> (fgcolor * fgalpha) + (bgcolor * (1.0 - fgalpha)) [doesn't work?]
-            ////////////////////////////////////
-            // alpha_final = alpha_bg + alpha_fg - alpha_bg * alpha_fg
-            // colour_final_a = colour_fg_a + colour_bg_a * (1 - alpha_fg)
-            srcPixel.a = srcPixel.a * .5; // testing reducing the src alpha by 50%
-
-            var alphaFinal = (dstPixel.a + srcPixel.a) - (dstPixel.a * srcPixel.a);
-            var dstRedAlpha = dstPixel.r * dstPixel.a;
-            var dstGreenAlpha = dstPixel.g * dstPixel.a;
-            var dstBlueAlpha = dstPixel.b * dstPixel.a;
-
-            var srcRedAlpha = srcPixel.r * srcPixel.a;
-            var srcGreenAlpha = srcPixel.g * srcPixel.a;
-            var srcBlueAlpha = srcPixel.b * srcPixel.a;
-
-            var redFinalAlpha = srcRedAlpha + dstRedAlpha * (1 - srcPixel.a);
-            var greenFinalAlpha = srcGreenAlpha + dstGreenAlpha * (1 - srcPixel.a);
-            var blueFinalAlpha = srcBlueAlpha + dstBlueAlpha * (1 - srcPixel.a);
-
-            var red = redFinalAlpha / alphaFinal;
-            var green = greenFinalAlpha / alphaFinal;
-            var blue = blueFinalAlpha / alphaFinal;
-
-            var finalColor = convertColorRange255(red, green, blue, alphaFinal);
-
-            blended.setPixelColor(Jimp.rgbaToInt(finalColor.r, finalColor.g, finalColor.b, finalColor.a), dx, dy);
-         }
-
-      }); // end y
-   }); // end x
-
-   return blended;
-}; // end blendMerge
 
 ffbeTool.prototype = {
    processCommandArgs: function (argv) {
@@ -459,8 +364,6 @@ ffbeTool.prototype = {
                         if (part.blendMode === 1) {
                            console.log(' -- blending part -- ' );
                            crop = blend(crop);
-                           //crop = blender(crop);
-                           //crop = blendMerge(crop, image, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                         }
 
                         if (part.flipX || part.flipY) {
@@ -482,14 +385,7 @@ ffbeTool.prototype = {
                         }
 
                         console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
-
-                        //if (part.blendMode === 1) {
-                        //   console.log(' -- blending part -- ' );
-                           //crop = blend(crop);
-                        //   image = blendMerge(crop, image, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-                        //} else {
-                           image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
-                        //}
+                        image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                      }); // end part.each
 
                      var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
