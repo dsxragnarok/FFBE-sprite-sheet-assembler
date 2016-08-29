@@ -5,7 +5,7 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
@@ -13,6 +13,7 @@ var ffbeTool = function () {
    this.columns = 0;
    this.inputPath = '.';
    this.outputPath = '.';
+   this.includeEmpty = false;
 
    this.cggPath = null;
    this.pngPath = null;
@@ -51,7 +52,7 @@ var getColorBoundsRect = function (image, mask, color, findColor) {
             if (value & mask === color) {
                if (x < minx) {
                   minx = x;
-               } 
+               }
                if (x > maxx) {
                   maxx = x;
                }
@@ -105,20 +106,59 @@ var createImage = function (width, height) {
 var blend = function (image) {
    _.each(_.range(image.bitmap.width), function (x) {
       _.each(_.range(image.bitmap.height), function (y) {
-         var hex = image.getPixelColor(x, y);
-         var pixel = Jimp.intToRGBA(hex);
-
-         var alpha, newPixel;
+         var pixel = convertColorRange01(Jimp.intToRGBA(image.getPixelColor(x, y)));
 
          if (pixel.a !== 0) {
-            alpha = parseInt((pixel.r + pixel.g + pixel.b) / 3);
-            newPixel = Jimp.rgbaToInt(pixel.r, pixel.g, pixel.b, alpha);
-            image.setPixelColor(newPixel, x, y);
+            pixel.r = pixel.r * pixel.a;
+            pixel.g = pixel.g * pixel.a;
+            pixel.b = pixel.b * pixel.a;
+            pixel.a = (pixel.r + pixel.g + pixel.b) / 3;
+
+            pixel = convertColorRange255(pixel);
+            image.setPixelColor(Jimp.rgbaToInt(pixel.r, pixel.g, pixel.b, pixel.a), x, y);
          }
       }); // end y
    }); // end x
 
    return image;
+};
+
+var convertColorRange01 = function (r, g, b, a) {
+   var color = {};
+   if (typeof r === 'object') {
+      color = r;
+   } else {
+      color.r = r;
+      color.g = g;
+      color.b = b;
+      color.a = a;
+   }
+
+   return {
+      r: color.r / 255,
+      g: color.g / 255,
+      b: color.b / 255,
+      a: color.a / 255
+   };
+};
+
+var convertColorRange255 = function (r, g, b, a) {
+   var color = {};
+   if (typeof r === 'object') {
+      color = r;
+   } else {
+      color.r = r;
+      color.g = g;
+      color.b = b;
+      color.a = a;
+   }
+
+   return {
+      r: Math.round(color.r * 255),
+      g: Math.round(color.g * 255),
+      b: Math.round(color.b * 255),
+      a: Math.round(color.a * 255)
+   };
 };
 
 ffbeTool.prototype = {
@@ -132,6 +172,9 @@ ffbeTool.prototype = {
                break;
             case '-c':
                this.columns = parseInt(argv[++i]);
+               break;
+            case '-e':
+               this.includeEmpty = true;
                break;
             case '-i':
                this.inputPath = argv[++i];
@@ -158,10 +201,10 @@ ffbeTool.prototype = {
                   var params = line.split(',');
                   params.splice(params.length - 1, 1);
 
-                  var anchor = 0, 
-                     count = 0, 
-                     parts = [], 
-                     part = null, 
+                  var anchor = 0,
+                     count = 0,
+                     parts = [],
+                     part = null,
                      i = 0;
 
                   if (params.length >= 2) {
@@ -217,7 +260,7 @@ ffbeTool.prototype = {
                      console.log('line ' + index + ' : params.length was less than 2');
                      return resolve(null);
                   }
-               }); // end Promise 
+               }); // end Promise
             }; // end processDataLine
 
             var processing = datasplit.map(processDataLine);
@@ -243,7 +286,7 @@ ffbeTool.prototype = {
       var cgsPath;
 
       if (this.animName) {
-         cgsPath = path.join(inputPath, 'unit_' + this.animName + '_cgs_' + unitID + '.csv'); 
+         cgsPath = path.join(inputPath, 'unit_' + this.animName + '_cgs_' + unitID + '.csv');
          return png.then(_.bind(function (image) {
             this.makeStrip(cgsPath, frames, image);
          }, this));
@@ -279,6 +322,7 @@ ffbeTool.prototype = {
 
       var columns = this.columns;
       var outputPath = this.outputPath;
+      var includeEmpty = this.includeEmpty;
 
       var ffbeScope = this;
 
@@ -300,8 +344,8 @@ ffbeTool.prototype = {
 
                   if (params.length < 2) {
                      console.log('params.length was less than 2');
-                     
-                     // resolving this as null, otherwise the entire 
+
+                     // resolving this as null, otherwise the entire
                      // Promise is rejected
                      return resolve(null);
                   }
@@ -341,17 +385,16 @@ ffbeTool.prototype = {
                         }
 
                         console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
-                        
                         image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                      }); // end part.each
 
                      var rect = getColorBoundsRect(image, 0xFF000000, 0, false);
-                     var frameObject = {};
+                     var frameObject = {
+                        image: image,
+                        rect: rect
+                     };
+
                      if (rect.width > 0 && rect.height > 0) {
-                        frameObject = {
-                           image: image,
-                           rect: rect
-                        };
                         frameImages.push(frameObject);
 
                         if (topLeft === null) {
@@ -368,8 +411,9 @@ ffbeTool.prototype = {
                         }
 
                         console.log('Frame ' + frameImages.length + ' done');
+                     } else if (includeEmpty) {
+                        frameImages.push(frameObject);
                      } // end if rect.width > 0 and rect.height > 0
-
 
 
                      resolve(image);
@@ -382,14 +426,14 @@ ffbeTool.prototype = {
 
             return results.then(function (image) {
                console.log('--- Making strip ---');
-               
+
                frameRect = {
                   x: topLeft.x - 5,
                   y: topLeft.y - 5,
                   width: bottomRight.x - topLeft.x + 10,
                   height: bottomRight.y - topLeft.y + 10
                };
-               
+
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
@@ -403,7 +447,7 @@ ffbeTool.prototype = {
                            var frame = frameObject.image;
                            var rect = frameObject.rect;
                            frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
-                           
+
                            console.log('compositing frame ' + (index + 1) + ' to strip');
 
                            image.composite(frame, index * frameRect.width, 0);
@@ -436,9 +480,9 @@ ffbeTool.prototype = {
                            _.each(_.range(columns), function (col) {
                               var index = (row * columns) + col;
                               var frameObject = frameImages[index];
-                              
+
                               var frame, rect;
-                              
+
                               if (frameObject) {
                                  frame = frameObject.image;
                                  rect = frameObject.rect;

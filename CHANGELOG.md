@@ -1,3 +1,15 @@
+## [0.2.1]
+
+### New Features
+
+* Added [-e] option to include empty frames
+
+### Changes
+
+* Fixed blend mode
+* Some optimizations
+* Recursively create directories to output path if necessary
+
 ## [0.2.0]
 
 ### Changes
