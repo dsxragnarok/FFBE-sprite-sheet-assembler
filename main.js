@@ -5,7 +5,7 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
@@ -15,6 +15,7 @@ var ffbeTool = function () {
    this.outputPath = '.';
    this.includeEmpty = false;
    this.verbose = false;
+   this.saveJson = false;
 
    this.cggPath = null;
    this.pngPath = null;
@@ -186,6 +187,9 @@ ffbeTool.prototype = {
             case '-v':
                this.verbose = true;
                break;
+            case '-j':
+               this.saveJson = true;
+               break;
          }
          i += 1;
       }
@@ -339,6 +343,8 @@ ffbeTool.prototype = {
 
       var ffbeScope = this;
 
+      var json = {};
+
       return fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
             var topLeft = null;
@@ -347,6 +353,8 @@ ffbeTool.prototype = {
             var frameRect = null;
 
             var datasplit = data.replace('\r').split('\n');
+
+            json.delay = [];
 
             var processDataLine = function (line, index) {
                return new Promise(function (resolve, reject) {
@@ -369,6 +377,8 @@ ffbeTool.prototype = {
                   xPos = parseInt(params[1]);
                   yPos = parseInt(params[2]);
                   delay = parseInt(params[3]);
+
+                  json.delay.push(delay);
 
                   createImage(2000, 2000).then(function (image) {
                      _.each(frames[frameIndex], function (part, idx) {
@@ -451,12 +461,17 @@ ffbeTool.prototype = {
                   height: bottomRight.y - topLeft.y + 10
                };
 
+               json.frameDimensions = frameRect;
+
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
 
                if (columns === 0 || columns >= frameImages.length) {
                   columns = frameImages.length;
+                  json.imageWidth = frameImages.length * frameRect.width;
+                  json.imageHeight = frameRect.height;
+
                   createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
                         _.each(_.range(frameImages.length), function (index) {
@@ -475,24 +490,26 @@ ffbeTool.prototype = {
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
+                        var retObject = {
+                           outputPath: outputPath,
+                           cgsPath: cgsPath,
+                           image: image,
+                           json: json
+                        };
+
                         if (outputPath !== '.') {
                            return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              return Promise.resolve({
-                                 outputPath: outputPath,
-                                 cgsPath: cgsPath,
-                                 image: image
-                              });
+                              return Promise.resolve(retObject);
                            });
                         } else {
-                           return Promise.resolve({
-                              outputPath: outputPath,
-                              cgsPath: cgsPath,
-                              image: image
-                           });
+                           return Promise.resolve(retObject);
                         }
                      })
-                     .then(ffbeScope.saveFile);
+                     .then(_.bind(ffbeScope.saveFile, ffbeScope));
                } else {
+                  json.imageWidth = columns * frameRect.width;
+                  json.imageHeight = rows * frameRect.height;
+
                   createImage(columns * frameRect.width, rows * frameRect.height)
                      .then(function (image) {
                         _.each(_.range(rows), function (row) {
@@ -519,23 +536,22 @@ ffbeTool.prototype = {
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
+                        var retObject = {
+                           outputPath: outputPath,
+                           cgsPath: cgsPath,
+                           image: image,
+                           json: json
+                        };
+
                         if (outputPath !== '.') {
                            return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              return Promise.resolve({
-                                 outputPath: outputPath,
-                                 cgsPath: cgsPath,
-                                 image: image
-                              });
+                              return Promise.resolve(retObject);
                            });
                         } else {
-                           return Promise.resolve({
-                              outputPath: outputPath,
-                              cgsPath: cgsPath,
-                              image: image
-                           });
+                           return Promise.resolve(retObject);
                         }
                      })
-                     .then(ffbeScope.saveFile);
+                     .then(_.bind(ffbeScope.saveFile, ffbeScope));
                } // end if-else
             }); // end results.then
 
@@ -553,6 +569,20 @@ ffbeTool.prototype = {
 
       console.log('saving sprite strip : ' + outputName);
       saveObject.image.write(outputName);
+
+      if (this.saveJson) {
+         saveObject.json.animName = action;
+         saveObject.json.unitId = uid;
+
+         filename = uid + '_' + action + '.json';
+         outputName = path.join(saveObject.outputPath, filename);
+         console.log('saving json: ' + outputName);
+         fs.writeFileAsync(outputName, JSON.stringify(saveObject.json))
+            .catch(function (err) {
+               console.error('Error trying to write json file: ' + filename);
+               console.log(err);
+            });
+      }
    }
 };
 
