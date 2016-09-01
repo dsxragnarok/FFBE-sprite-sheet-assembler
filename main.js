@@ -5,7 +5,7 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
@@ -14,6 +14,8 @@ var ffbeTool = function () {
    this.inputPath = '.';
    this.outputPath = '.';
    this.includeEmpty = false;
+   this.verbose = false;
+   this.saveJson = false;
 
    this.cggPath = null;
    this.pngPath = null;
@@ -182,12 +184,19 @@ ffbeTool.prototype = {
             case '-o':
                this.outputPath = argv[++i];
                break;
+            case '-v':
+               this.verbose = true;
+               break;
+            case '-j':
+               this.saveJson = true;
+               break;
          }
          i += 1;
       }
    },
 
    readCggAsync: function (unitID) {
+      var verbose = this.verbose;
       this.cggPath = path.join(this.inputPath, 'unit_cgg_' + unitID + '.csv');
 
       console.info('Loading ' + this.cggPath + '...');
@@ -257,7 +266,9 @@ ffbeTool.prototype = {
 
                      return resolve(parts.reverse());
                   } else {
-                     console.log('line ' + index + ' : params.length was less than 2');
+                     if (verbose) {
+                        console.log('line ' + index + ' : params.length was less than 2');
+                     }
                      return resolve(null);
                   }
                }); // end Promise
@@ -276,6 +287,7 @@ ffbeTool.prototype = {
    },
 
    readPngAsync: function (data) {
+      var verbose = this.verbose;
       var frames = data.frames;
       var unitID = data.unitID;
 
@@ -291,7 +303,7 @@ ffbeTool.prototype = {
             this.makeStrip(cgsPath, frames, image);
          }, this));
       } else {
-         console.log(' * No animName *');
+         console.info('* No animName provided *');
          return png.then(_.bind(function (image) {
             fs.readdirAsync(this.inputPath).map(_.bind(function (file) {
 
@@ -301,7 +313,9 @@ ffbeTool.prototype = {
                if (extension === '.csv' && file.indexOf('_cgs_') >= 0 &&
                   file.indexOf(unitID) >= 0) {
 
-                  console.log(' -- ' + file + ' is target cgs');
+                  if (verbose) {
+                     console.log(' -- ' + file + ' is target cgs');
+                  }
                   this.makeStrip(cgsPath, frames, image);
                }
             }, this)).catch(function (err) {
@@ -318,13 +332,18 @@ ffbeTool.prototype = {
      * @param img - JIMP image?
      */
    makeStrip: function (cgsPath, frames, img) {
-      console.log('Loading ' + cgsPath);
+      var verbose = this.verbose;
+      console.info('Loading ' + cgsPath);
 
       var columns = this.columns;
       var outputPath = this.outputPath;
       var includeEmpty = this.includeEmpty;
 
+      var animation = path.parse(cgsPath).name;
+
       var ffbeScope = this;
+
+      var json = {};
 
       return fs.readFileAsync(cgsPath, 'utf8')
          .then(function (data) {
@@ -335,6 +354,8 @@ ffbeTool.prototype = {
 
             var datasplit = data.replace('\r').split('\n');
 
+            json.delay = [];
+
             var processDataLine = function (line, index) {
                return new Promise(function (resolve, reject) {
                   var params = line.split(',');
@@ -343,7 +364,9 @@ ffbeTool.prototype = {
                   var frameIndex, xPos, yPos, delay, frameImage;
 
                   if (params.length < 2) {
-                     console.log('params.length was less than 2');
+                     if (verbose) {
+                        console.log('params.length was less than 2');
+                     }
 
                      // resolving this as null, otherwise the entire
                      // Promise is rejected
@@ -355,6 +378,8 @@ ffbeTool.prototype = {
                   yPos = parseInt(params[2]);
                   delay = parseInt(params[3]);
 
+                  json.delay.push(delay);
+
                   createImage(2000, 2000).then(function (image) {
                      _.each(frames[frameIndex], function (part, idx) {
                         var crop;
@@ -362,17 +387,17 @@ ffbeTool.prototype = {
                         crop = clone.crop(part.imgX, part.imgY, part.imgWidth, part.imgHeight);
 
                         if (part.blendMode === 1) {
-                           console.log(' -- blending part -- ' );
+                           if (verbose) console.log(' -- blending part -- ' );
                            crop = blend(crop);
                         }
 
                         if (part.flipX || part.flipY) {
-                           console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
+                           if (verbose) console.log(' -- flipping horizontal: ' + part.flipX + ', vertical: ' + part.flipY);
                            crop.flip(part.flipX, part.flipY);
                         }
 
                         if (part.rotate !== 0) {
-                           console.log(' -- rotating part: ' + part.rotate);
+                           if (verbose) console.log(' -- rotating part: ' + part.rotate);
                            // NOTE: Jimp rotates clockwise whereas the cgg setting for
                            // rotation is given in terms of counter-clockwise rotation
                            // So multiply by -1 to reverse it.
@@ -380,11 +405,13 @@ ffbeTool.prototype = {
                         }
 
                         if (part.opacity < 100) {
-                           console.log(' -- reducing opacity: ' + part.opacity);
+                           if (verbose) console.log(' -- reducing opacity: ' + part.opacity);
                            crop.opacity(part.opacity / 100);
                         }
 
-                        console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
+                        if (verbose) {
+                           console.log(' -- writing part ' + idx + ' of Frame ' + frameIndex + ' from line ' + index);
+                        } 
                         image.composite(crop, 2000/2 + part.xPos + xPos, 2000/2 + part.yPos + yPos);
                      }); // end part.each
 
@@ -410,7 +437,7 @@ ffbeTool.prototype = {
                            bottomRight.y = Math.max(rect.y + rect.height, bottomRight.y);
                         }
 
-                        console.log('Frame ' + frameImages.length + ' done');
+                        console.log('Frame ' + frameImages.length + ' of ' + animation + ' done');
                      } else if (includeEmpty) {
                         frameImages.push(frameObject);
                      } // end if rect.width > 0 and rect.height > 0
@@ -425,7 +452,7 @@ ffbeTool.prototype = {
             var results = Promise.all(processing);
 
             return results.then(function (image) {
-               console.log('--- Making strip ---');
+               console.info('--- Making ' + animation + ' strip ---');
 
                frameRect = {
                   x: topLeft.x - 5,
@@ -434,12 +461,17 @@ ffbeTool.prototype = {
                   height: bottomRight.y - topLeft.y + 10
                };
 
+               json.frameDimensions = frameRect;
+
                var animImage = null;
                var tmpColumns = columns;
                var rows = Math.ceil(frameImages.length / columns);
 
                if (columns === 0 || columns >= frameImages.length) {
                   columns = frameImages.length;
+                  json.imageWidth = frameImages.length * frameRect.width;
+                  json.imageHeight = frameRect.height;
+
                   createImage(frameImages.length * frameRect.width, frameRect.height)
                      .then(function (image) {
                         _.each(_.range(frameImages.length), function (index) {
@@ -448,7 +480,9 @@ ffbeTool.prototype = {
                            var rect = frameObject.rect;
                            frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
 
-                           console.log('compositing frame ' + (index + 1) + ' to strip');
+                           if (verbose) {
+                              console.log('compositing frame ' + (index + 1) + ' to strip');
+                           }
 
                            image.composite(frame, index * frameRect.width, 0);
                         }); // end each frame
@@ -456,24 +490,26 @@ ffbeTool.prototype = {
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
+                        var retObject = {
+                           outputPath: outputPath,
+                           cgsPath: cgsPath,
+                           image: image,
+                           json: json
+                        };
+
                         if (outputPath !== '.') {
                            return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              return Promise.resolve({
-                                 outputPath: outputPath,
-                                 cgsPath: cgsPath,
-                                 image: image
-                              });
+                              return Promise.resolve(retObject);
                            });
                         } else {
-                           return Promise.resolve({
-                              outputPath: outputPath,
-                              cgsPath: cgsPath,
-                              image: image
-                           });
+                           return Promise.resolve(retObject);
                         }
                      })
-                     .then(ffbeScope.saveFile);
+                     .then(_.bind(ffbeScope.saveFile, ffbeScope));
                } else {
+                  json.imageWidth = columns * frameRect.width;
+                  json.imageHeight = rows * frameRect.height;
+
                   createImage(columns * frameRect.width, rows * frameRect.height)
                      .then(function (image) {
                         _.each(_.range(rows), function (row) {
@@ -489,7 +525,9 @@ ffbeTool.prototype = {
 
                                  frame.crop(frameRect.x, frameRect.y, frameRect.width, frameRect.height);
 
-                                 console.log('compositing frame ' + (index + 1) + ' to sheet');
+                                 if (verbose) {
+                                    console.log('compositing frame ' + (index + 1) + ' to sheet');
+                                 }
                                  image.composite(frame, col * frameRect.width, row * frameRect.height);
                               }
                            }); // end each col
@@ -498,23 +536,22 @@ ffbeTool.prototype = {
                         return image;
                      }) // end createImage.then
                      .then(function (image) {
+                        var retObject = {
+                           outputPath: outputPath,
+                           cgsPath: cgsPath,
+                           image: image,
+                           json: json
+                        };
+
                         if (outputPath !== '.') {
                            return mkdirp.mkdirpAsync(outputPath).then(function (directory) {
-                              return Promise.resolve({
-                                 outputPath: outputPath,
-                                 cgsPath: cgsPath,
-                                 image: image
-                              });
+                              return Promise.resolve(retObject);
                            });
                         } else {
-                           return Promise.resolve({
-                              outputPath: outputPath,
-                              cgsPath: cgsPath,
-                              image: image
-                           });
+                           return Promise.resolve(retObject);
                         }
                      })
-                     .then(ffbeScope.saveFile);
+                     .then(_.bind(ffbeScope.saveFile, ffbeScope));
                } // end if-else
             }); // end results.then
 
@@ -532,6 +569,20 @@ ffbeTool.prototype = {
 
       console.log('saving sprite strip : ' + outputName);
       saveObject.image.write(outputName);
+
+      if (this.saveJson) {
+         saveObject.json.animName = action;
+         saveObject.json.unitId = uid;
+
+         filename = uid + '_' + action + '.json';
+         outputName = path.join(saveObject.outputPath, filename);
+         console.log('saving json: ' + outputName);
+         fs.writeFileAsync(outputName, JSON.stringify(saveObject.json))
+            .catch(function (err) {
+               console.error('Error trying to write json file: ' + filename);
+               console.log(err);
+            });
+      }
    }
 };
 
