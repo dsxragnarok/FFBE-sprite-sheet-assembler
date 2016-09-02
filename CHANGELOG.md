@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### New Features
+
+* Added [-n] option to use the out filename format `$uid_$action`
+
+### Changes
+
+* Default out filename format to `unit_$action_$uid`
+
 ## [0.2.1]
 
 ### New Features

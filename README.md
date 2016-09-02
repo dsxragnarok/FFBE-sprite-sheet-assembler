@@ -12,7 +12,7 @@ to assemble the sprite sheet.
 
 ### Usage
 ```
-node main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
+node main num [-a anim] [-c columns] [-e] [-v] [-j] [-n] [-i inDir] [-o outDir]
 
 ```
 * num: (required) the unit ID number, must be the first argument.
@@ -21,6 +21,7 @@ node main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
 * -e: If this option is included, the strips will include any empty frames. By default empty frames are excluded.
 * -v: If this option is included, more information will be printed to console.
 * -j: This option saves the sheet information in json format saved as a .json file.
+* -n: Uses the filename format "$uid_$action". By default the format is "unit_$action_$uid"
 * -i: The input path, defaults to current directory.
 * -o: The output path, defaults to current directory.
 
