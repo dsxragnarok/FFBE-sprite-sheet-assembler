@@ -9,9 +9,9 @@
   "author": "Kevin Phung <phung.kevin@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "bluebird": "^3.4.1",
+    "bluebird": "^3.5.0",
     "jimp": "^0.2.24",
-    "mkdirp": "^0.5.1",
-    "underscore": "^1.8.3"
+    "lodash": "^4.17.4",
+    "mkdirp": "^0.5.1"
   }
 }
