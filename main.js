@@ -5,7 +5,7 @@ var path = require('path');
 var _ = require('underscore');
 var Jimp = require('jimp');
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-n] [-i inDir] [-o outDir]';
 
 var ffbeTool = function () {
    this.id = -1;
@@ -16,6 +16,7 @@ var ffbeTool = function () {
    this.includeEmpty = false;
    this.verbose = false;
    this.saveJson = false;
+   this.customFilename = false;  // uid_action  | default: unit_action_uid
 
    this.cggPath = null;
    this.pngPath = null;
@@ -189,6 +190,9 @@ ffbeTool.prototype = {
                break;
             case '-j':
                this.saveJson = true;
+               break;
+            case '-n':
+               this.customFilename = true;
                break;
          }
          i += 1;
@@ -564,8 +568,14 @@ ffbeTool.prototype = {
       var action = bits[0].substring('unit_'.length);
       var uid = bits[1];
 
-      var filename = uid + '_' + action + '.png';
-      var outputName = path.join(saveObject.outputPath, filename);
+      var filename, outputName;
+
+      if (this.customFilename) {
+         filename = uid + '_' + action;
+      } else {
+         filename = 'unit_' + action + '_' + uid;
+      }
+      outputName = path.join(saveObject.outputPath, filename + '.png');
 
       console.log('saving sprite strip : ' + outputName);
       saveObject.image.write(outputName);
@@ -574,8 +584,7 @@ ffbeTool.prototype = {
          saveObject.json.animName = action;
          saveObject.json.unitId = uid;
 
-         filename = uid + '_' + action + '.json';
-         outputName = path.join(saveObject.outputPath, filename);
+         outputName = path.join(saveObject.outputPath, filename + '.json');
          console.log('saving json: ' + outputName);
          fs.writeFileAsync(outputName, JSON.stringify(saveObject.json))
             .catch(function (err) {
