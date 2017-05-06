@@ -29,6 +29,12 @@
         "semi": [
             "error",
             "always"
-        ]
+        ],
+        "func-names": ["off"],
+        "arrow-parens": [
+            "error",
+            "always"
+        ],
+        "no-console": ["off"]
     }
 }
