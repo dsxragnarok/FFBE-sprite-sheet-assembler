@@ -2,7 +2,7 @@ var Promise = require('bluebird');
 var fs = Promise.promisifyAll(require('fs'));
 var mkdirp = Promise.promisifyAll(require('mkdirp'));
 var path = require('path');
-var _ = require('underscore');
+var _ = require('lodash');
 var Jimp = require('jimp');
 
 var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-n] [-i inDir] [-o outDir]';
