@@ -4,6 +4,7 @@
   "description": "tool to construct animation frames from png and ccg information",
   "main": "main.js",
   "scripts": {
+    "lint": "eslint",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Kevin Phung <phung.kevin@gmail.com>",
@@ -15,6 +16,10 @@
     "mkdirp": "^0.5.1"
   },
   "devDependencies": {
-    "eslint": "^3.19.0"
+    "eslint": "^3.19.0",
+    "eslint-config-airbnb": "^14.1.0",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jsx-a11y": "^4.0.0",
+    "eslint-plugin-react": "^6.10.3"
   }
 }
