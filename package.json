@@ -13,5 +13,8 @@
     "jimp": "^0.2.24",
     "lodash": "^4.17.4",
     "mkdirp": "^0.5.1"
+  },
+  "devDependencies": {
+    "eslint": "^3.19.0"
   }
 }
