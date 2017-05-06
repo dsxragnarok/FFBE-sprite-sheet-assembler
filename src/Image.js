@@ -1,0 +1,87 @@
+import Jimp, { intToRGBA, rgbaToInt } from 'jimp';
+import { range } from 'lodash';
+
+/**
+ * Creates a Promise wrapper around Jimp's constructor.
+ *
+ * @param {number} width - The image width in pixels
+ * @param {number} height - The image height in pixels
+ * @return {Promise} - Promise resolving to a Jimp object
+ */
+export const createImage = function (width, height) {
+    return new Promise((resolve, reject) =>
+        new Jimp(width, height, (err, image) =>
+            (err ? reject(err) : resolve(image))));
+};
+
+/**
+ * Converts color range of form 0.0-1.0 to 0-255
+ *
+ * @param {Object} pixel    Object describing the pixel colors in range 0-1
+ * @param {number} pixel.r  The red channel
+ * @param {number} pixel.g  The green channel
+ * @param {number} pixel.b  The blue channel
+ * @param {number} pixel.a  The alpha channel
+ * @return {Object} The object describing the pixel colors in range 0-255
+ */
+const convertColorToDecimalRange = function ({ r, g, b, a }) {
+    return {
+        r: r / 255,
+        g: g / 255,
+        b: b / 255,
+        a: a / 255,
+    };
+};
+
+/**
+ * Converts color range of form 0-255 to 0.0-1.0
+ *
+ * @param {Object} pixel    Object describing the pixel colors in range 0-255
+ * @param {number} pixel.r  The red channel
+ * @param {number} pixel.g  The green channel
+ * @param {number} pixel.b  The blue channel
+ * @param {number} pixel.a  The alpha channel
+ * @return {Object} The object describing the pixel colors in range 0-1
+ */
+const convertColorTo255Range = function ({ r, g, b, a }) {
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255),
+        a: Math.round(a * 255),
+    };
+};
+
+/**
+ * Applies a blending of color channels
+ *
+ * @param {Jimp}    The Jimp image object to apply blending
+ * @return {Jimp}   The transformed Jimp image object
+ */
+export const blend = function (image) {
+    const { bitmap, getPixelColor, setPixelColor } = image;
+    const { width, height } = bitmap;
+
+    range(width).forEach((col) => {
+        range(height).forEach((row) => {
+            const { a, r, g, b } = convertColorToDecimalRange(intToRGBA(getPixelColor(col, row)));
+
+            if (a !== 0) {
+                const pixel = convertColorTo255Range({
+                    r: r * a,
+                    g: g * a,
+                    b: b * a,
+                    a: (r + g + b) / 3,
+                });
+                setPixelColor(rgbaToInt(...pixel), col, row);
+            }
+        });
+    });
+
+    return image;
+};
+
+export default {
+    createImage,
+    blend,
+};
