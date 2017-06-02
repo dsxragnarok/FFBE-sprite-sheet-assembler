@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "lint": "eslint",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --config config/webpack.config.js"
   },
   "author": "Kevin Phung <phung.kevin@gmail.com>",
   "license": "ISC",
@@ -16,6 +17,8 @@
     "mkdirp": "^0.5.1"
   },
   "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^7.0.0",
     "eslint": "^3.19.0",
     "eslint-config-airbnb": "^14.1.0",
     "eslint-plugin-import": "^2.2.0",
