@@ -35,6 +35,10 @@
             "error",
             "always"
         ],
-        "no-console": ["off"]
+        "no-console": ["off"],
+        "template-curly-spacing": [
+            "error",
+            "always"
+        ]
     }
 }
