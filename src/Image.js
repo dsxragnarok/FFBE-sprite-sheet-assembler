@@ -81,7 +81,61 @@ export const blend = function (image) {
     return image;
 };
 
+// mask : hex
+// color : hex
+// findColor : boolean
+
+// attempt to implement haxe's
+// function getColorBoundsRect( mask : UInt, color : UInt, ?findColor : Bool ) : Rectangle
+/*
+   Determines a rectangular region that either fully encloses all pixels of a specified color
+   within the bitmap image (if the findColor parameter is set to true) or fully encloses all pixels
+   that do not include the specified color (if the findColor parameter is set to false).
+
+   For example, if you have a source image and you want to determine the rectangle of the image
+   that contains a nonzero alpha channel, pass {mask: 0xFF000000, color: 0x00000000} as parameters.
+   If the findColor parameter is set to true, the entire image is searched for the bounds of pixels
+   for which (value & mask) == color (where value is the color value of the pixel). If the
+   findColor parameter is set to false, the entire image is searched for the bounds of pixels for
+   which (value & mask) != color (where value is the color value of the pixel). To determine white
+   space around an image, pass {mask: 0xFFFFFFFF, color: 0xFFFFFFFF} to find the bounds of nonwhite
+   pixels.
+*/
+const getColorBoundsRect = function (image, mask, color, findColor) {
+    // findColor : value & mask === color
+    // !findColor : value & mask !== color
+    const { width, height } = image.bitmap;
+
+    const extremities = range(height).reduce((acc, row) =>
+        range(width).reduce((obj, col) => {
+            const pixelColor = image.getPixelColor(col, row);
+
+            // eslint-disable-next-line no-bitwise
+            if ((findColor && (pixelColor & mask === color)) || (pixelColor & mask !== color)) {
+                const { minx, miny, maxx, maxy } = obj;
+                return {
+                    minx: !minx || col < minx ? col : minx,
+                    miny: !miny || row < miny ? row : miny,
+                    maxx: !maxx || col > maxx ? col : maxx,
+                    maxy: !maxy || row > maxy ? row : maxy,
+                };
+            }
+            return obj;
+        }, {})
+    , {});
+
+    const { minx: x, miny: y, maxx, maxy } = extremities;
+
+    return {
+        x,
+        y,
+        width: Math.max(0, (maxx - x) + 1),
+        height: Math.max(0, (maxy - y) + 1),
+    };
+};
+
 export default {
     createImage,
     blend,
+    getColorBoundsRect,
 };
