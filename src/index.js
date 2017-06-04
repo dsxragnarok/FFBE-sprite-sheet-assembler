@@ -143,7 +143,6 @@ const processCggFile = function (unitId, options) {
     return readFileAsync(cggPath, 'utf8')
         .then((data) => data.replace('\r').split('\n'))
         .then((data) => data.map(processCggRowData))
-        // .then((frames) => console.log(frames))
         .then((frames) => ({ unitId, frames }));
 };
 
@@ -152,7 +151,7 @@ const saveFile = function ({ cgsPath, outputPath, image }) {
     const { name } = pathObject;
     const [action, uid] = name.split('_cgs_');
 
-    const filename = `unit_${ action }_${ uid }.png`;
+    const filename = `${ action }_${ uid }.png`;
     const outputName = path.join(outputPath, filename);
 
     // if saveJson -> save json to file
@@ -165,8 +164,6 @@ const saveFile = function ({ cgsPath, outputPath, image }) {
 const processCgsData = function (rows, frames, sourceImage, options) {
     console.info(' --- Process Cgs Data --- ');
     const { includeEmpty } = options;
-
-    // console.error(' rows', rows);
 
     return Promise.all(rows.map((params) => {
         if (params.length < 2) {
@@ -214,13 +211,12 @@ const processCgsData = function (rows, frames, sourceImage, options) {
             .then((compositeImage) => {
                 const rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
                 if ((rect.width > 0 && rect.height > 0) || includeEmpty) {
-                    console.error(' -- returning with rect -- ');
                     return {
                         rect,
                         compositeImage,
                     };
                 }
-                console.error(' -- returning null -- ');
+
                 return null;
             })
             .catch((error) => {
