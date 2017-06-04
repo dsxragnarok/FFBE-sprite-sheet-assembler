@@ -114,8 +114,8 @@ const processCggRowData = function (data, row) {
                 imgHeight: parseInt(imgHeight, 10),
                 pageID: parseInt(pageID, 10),
                 index,
-                flipX: nextType === 1 || nextType === 3,
-                flipY: nextType === 2 || nextType === 3,
+                flipX: parseInt(nextType, 10) === 1 || parseInt(nextType, 10) === 3,
+                flipY: parseInt(nextType, 10) === 2 || parseInt(nextType, 10) === 3,
                 lineIndex: row,
             };
         })
