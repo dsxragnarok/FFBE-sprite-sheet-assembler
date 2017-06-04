@@ -66,7 +66,6 @@ const convertColorTo255Range = function ({ r, g, b, a }) {
  * @return {Jimp}   The transformed Jimp image object
  */
 export const blend = function (image) {
-    // const { bitmap, getPixelColor, setPixelColor } = image;
     const { width, height } = image.bitmap;
 
     range(width).forEach((col) => {
