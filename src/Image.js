@@ -9,9 +9,16 @@ import { range } from 'lodash';
  * @return {Promise} - Promise resolving to a Jimp object
  */
 export const createImage = function (width, height) {
-    return new Promise((resolve, reject) =>
-        new Jimp(width, height, (err, image) =>
-            (err ? reject(err) : resolve(image))));
+    return new Promise((resolve, reject) => {
+        // eslint-disable-next-line no-new
+        new Jimp(width, height, (err, image) => {
+            if (err) {
+                return reject(err);
+            }
+
+            return resolve(image);
+        });
+    });
 };
 
 /**
@@ -59,12 +66,13 @@ const convertColorTo255Range = function ({ r, g, b, a }) {
  * @return {Jimp}   The transformed Jimp image object
  */
 export const blend = function (image) {
-    const { bitmap, getPixelColor, setPixelColor } = image;
-    const { width, height } = bitmap;
+    // const { bitmap, getPixelColor, setPixelColor } = image;
+    const { width, height } = image.bitmap;
 
     range(width).forEach((col) => {
         range(height).forEach((row) => {
-            const { a, r, g, b } = convertColorToDecimalRange(intToRGBA(getPixelColor(col, row)));
+            const { a, r, g, b } =
+                convertColorToDecimalRange(intToRGBA(image.getPixelColor(col, row)));
 
             if (a !== 0) {
                 const pixel = convertColorTo255Range({
@@ -73,7 +81,8 @@ export const blend = function (image) {
                     b: b * a,
                     a: (r + g + b) / 3,
                 });
-                setPixelColor(rgbaToInt(...pixel), col, row);
+
+                image.setPixelColor(rgbaToInt(pixel.r, pixel.g, pixel.b, pixel.a), col, row);
             }
         });
     });
@@ -101,7 +110,7 @@ export const blend = function (image) {
    space around an image, pass {mask: 0xFFFFFFFF, color: 0xFFFFFFFF} to find the bounds of nonwhite
    pixels.
 */
-const getColorBoundsRect = function (image, mask, color, findColor) {
+export const getColorBoundsRect = function (image, mask, color, findColor) {
     // findColor : value & mask === color
     // !findColor : value & mask !== color
     const { width, height } = image.bitmap;
@@ -114,15 +123,15 @@ const getColorBoundsRect = function (image, mask, color, findColor) {
             if ((findColor && (pixelColor & mask === color)) || (pixelColor & mask !== color)) {
                 const { minx, miny, maxx, maxy } = obj;
                 return {
-                    minx: !minx || col < minx ? col : minx,
-                    miny: !miny || row < miny ? row : miny,
-                    maxx: !maxx || col > maxx ? col : maxx,
-                    maxy: !maxy || row > maxy ? row : maxy,
+                    minx: col < minx ? col : minx,
+                    miny: row < miny ? row : miny,
+                    maxx: col > maxx ? col : maxx,
+                    maxy: row > maxy ? row : maxy,
                 };
             }
             return obj;
-        }, {})
-    , {});
+        }, acc)
+    , { minx: width, maxx: 0, miny: height, maxy: 0 });
 
     const { minx: x, miny: y, maxx, maxy } = extremities;
 
