@@ -3,7 +3,7 @@ import Jimp from 'jimp';
 import _fs from 'fs';
 import _mkdirp from 'mkdirp';
 import { promisifyAll } from 'bluebird';
-import { chunk } from 'lodash';
+import { chunk, isArray } from 'lodash';
 
 import { createImage, blend, getColorBoundsRect } from './Image';
 
@@ -11,6 +11,7 @@ const fs = promisifyAll(_fs);
 const mkdirp = promisifyAll(_mkdirp);
 
 const processArguments = function (...args) {
+    console.log('[processArguments]', args);
     let index = 3;
     const { length } = args;
     const output = {};
@@ -18,23 +19,23 @@ const processArguments = function (...args) {
     while (index < length) {
         switch (args[index]) {
         case '-a':
-            output.animName = args[index];
             index += 1;
+            output.animName = args[index];
             break;
         case '-c':
-            output.columns = parseInt(args[index], 10);
             index += 1;
+            output.columns = parseInt(args[index], 10);
             break;
         case '-e':
             output.includeEmpty = true;
             break;
         case '-i':
-            output.inputPath = args[index];
             index += 1;
+            output.inputPath = args[index];
             break;
         case '-o':
-            output.outputPath = args[index];
             index += 1;
+            output.outputPath = args[index];
             break;
         case '-v':
             output.verbose = true;
@@ -47,6 +48,7 @@ const processArguments = function (...args) {
             break;
         default:
         }
+        index += 1;
     }
 
     return output;
@@ -75,12 +77,14 @@ const processCggRowData = function (data, row) {
     const params = data.split(',').slice(0, -1);
     const { length } = params;
 
+    console.info(' --- Processing Cgg Row --- ', row);
     if (length < 2) {
         return null;
     }
 
-    const [anchor, count] = params;
-    return chunk(params, length / count)
+    const [anchor, count, ...rest] = params;
+
+    return chunk(rest, rest.length / count)
         .map((config, index) => {
             const [
                 xPos,
@@ -97,18 +101,18 @@ const processCggRowData = function (data, row) {
             ] = config;
 
             return {
-                anchor,
-                xPos,
-                yPos,
-                nextType,
-                blendMode,
-                opacity,
-                rotate,
-                imgX,
-                imgY,
-                imgWidth,
-                imgHeight,
-                pageID,
+                anchor: parseInt(anchor, 10),
+                xPos: parseInt(xPos, 10),
+                yPos: parseInt(yPos, 10),
+                nextType: parseInt(nextType, 10),
+                blendMode: parseInt(blendMode, 10),
+                opacity: parseInt(opacity, 10),
+                rotate: parseInt(rotate, 10),
+                imgX: parseInt(imgX, 10),
+                imgY: parseInt(imgY, 10),
+                imgWidth: parseInt(imgWidth, 10),
+                imgHeight: parseInt(imgHeight, 10),
+                pageID: parseInt(pageID, 10),
                 index,
                 flipX: nextType === 1 || nextType === 3,
                 flipY: nextType === 2 || nextType === 3,
@@ -128,17 +132,19 @@ const processCggRowData = function (data, row) {
  *                   the animation frames' data
  */
 const processCggFile = function (unitId, options) {
+    console.info('--- Processing Cgg File ---');
     const { inputPath } = options;
 
     const { readFileAsync } = fs;
     const cggPath = path.join(inputPath, `unit_cgg_${ unitId }.csv`);
 
-    console.info(`Loading ${ cggPath }...`);
+    console.info(`Loading ${ cggPath }`);
 
     return readFileAsync(cggPath, 'utf8')
-    .then((data) => data.replace('\r').split('\n'))
-    .then((data) => data.map(processCggRowData))
-    .then((frames) => ({ unitId, frames }));
+        .then((data) => data.replace('\r').split('\n'))
+        .then((data) => data.map(processCggRowData))
+        // .then((frames) => console.log(frames))
+        .then((frames) => ({ unitId, frames }));
 };
 
 const saveFile = function ({ cgsPath, outputPath, image }) {
@@ -152,18 +158,22 @@ const saveFile = function ({ cgsPath, outputPath, image }) {
     // if saveJson -> save json to file
     // refer to old file
 
+    console.info(' * Saving ', outputName);
     return image.write(outputName);
 };
 
-const processCgsData = function (rows, sourceImage, options) {
+const processCgsData = function (rows, frames, sourceImage, options) {
+    console.info(' --- Process Cgs Data --- ');
     const { includeEmpty } = options;
 
-    return rows.map((params) => {
+    // console.error(' rows', rows);
+
+    return Promise.all(rows.map((params) => {
         if (params.length < 2) {
             return null;
         }
 
-        const [frameIndex, xPos, yPos/* , delay */] = params;
+        const [frameIndex, x, y/* , delay */] = params;
         // json.delay.push(delay);
         return createImage(2000, 2000)
             .then((blankImage) => frames[frameIndex].reduce((compositeImage, part) => {
@@ -171,6 +181,8 @@ const processCgsData = function (rows, sourceImage, options) {
                 let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
 
                 const {
+                    xPos,
+                    yPos,
                     blendMode,
                     flipX,
                     flipY,
@@ -195,29 +207,42 @@ const processCgsData = function (rows, sourceImage, options) {
                 }
 
                 return compositeImage
-                    .composite(crop, (2000 / 2) + xPos, (2000 / 2) + yPos);
+                    .composite(crop,
+                        (2000 / 2) + parseInt(x, 10) + xPos,
+                        (2000 / 2) + parseInt(y, 10) + yPos);
             }, blankImage))
             .then((compositeImage) => {
                 const rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
                 if ((rect.width > 0 && rect.height > 0) || includeEmpty) {
+                    console.error(' -- returning with rect -- ');
                     return {
                         rect,
                         compositeImage,
                     };
                 }
+                console.error(' -- returning null -- ');
+                return null;
+            })
+            .catch((error) => {
+                console.error(error);
                 return null;
             });
-    })   // end lines.map
+    }))   // end lines.map
     .then((frameObjects) => frameObjects.reduce((animObject, frame) => {
-        const { frameImages } = animObject;
-        const { img = null, rect = null } = frame;
-        let { topLeft, bottomRight } = animObject;
-
-        if (!img || !rect) {
+        console.info(' -- reducing to animObject -- ');
+        if (!frame) {
             return animObject;
         }
 
-        frameImages.push(img);
+        const { frameImages } = animObject;
+        const { compositeImage = null, rect = null } = frame;
+        let { topLeft, bottomRight } = animObject;
+
+        if (!compositeImage || !rect) {
+            return animObject;
+        }
+
+        frameImages.push(compositeImage);
         if (rect && topLeft === null) {
             const { x, y, width, height } = rect;
             topLeft = { x, y };
@@ -241,23 +266,23 @@ const processCgsData = function (rows, sourceImage, options) {
 /**
  * @todo finish implementation
  */
-const makeStrip = function (frames, image, options) {
-    const { cgsPath, columns, includeEmpty, outputPath } = options;
+const makeStrip = function (cgsPath, frames, image, options) {
+    console.info(' --- Making Animation Strip --- ');
+    const { columns, outputPath } = options;
+
+    console.info(`\tcgsPath [${ cgsPath }]`);
     // const { name: animation } = path.parse(cgsPath);
     const json = {};
-
-    // let topLeft = null;
-    // let bottomRight = null;
-    // let frameImages = [];
-    // let frameRect = null;
 
     return fs.readFileAsync(cgsPath, 'utf8')
         .then((data) => data.replace('\r').split('\n'))
         // .then((data) => Promise.all(data.map(processCgsRowData)))
         .then((lines) => lines.map((line) => line.split(',').slice(0, -1)))
-        .then((lines) => processCgsData(lines, image, { includeEmpty }))
+        .then((lines) => processCgsData(lines, frames, image, options))
         .then((imageObject) => {
+            console.info(' * * DONE processing Cgs Data * * ');
             const { frameImages, topLeft, bottomRight } = imageObject;
+            console.info(topLeft, bottomRight);
 
             const frameRect = {
                 x: topLeft.x - 5,
@@ -274,23 +299,21 @@ const makeStrip = function (frames, image, options) {
                 // animation strip
                 return createImage(frameImages.length * frameRect.width, frameRect.height)
                     .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
-                        const { frame } = frameObject;
                         const { x, y, width, height } = frameRect;
-                        frame.crop(x, y, width, height);
-                        return compositeImage.composite(frame, index * width, 0);
+                        frameObject.crop(x, y, width, height);
+                        return compositeImage.composite(frameObject, index * width, 0);
                     }, img));
             }
 
             // animation sheet
             return createImage(columns * frameRect.width, rows * frameRect.height)
                 .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
-                    const { frame } = frameObject;
                     const { x, y, width, height } = frameRect;
-                    const row = index / columns;
+                    const row = Math.floor(index / columns);
                     const col = index % columns;
 
-                    frame.crop(x, y, width, height);
-                    return compositeImage.composite(frame, col * width, row * height);
+                    frameObject.crop(x, y, width, height);
+                    return compositeImage.composite(frameObject, col * width, row * height);
                 }, img));
         })
         .then((spritesheet) => { // eslint-disable-line arrow-body-style
@@ -321,28 +344,35 @@ const makeStrip = function (frames, image, options) {
  * @return {Promise} - The Promise resolving to the Jimp image of the sprite sheet
  */
 const readPng = function ({ unitId, frames }, options) {
+    console.info(' --- Read Png ---');
+
     const { inputPath } = options;
     const pngPath = path.join(inputPath, `unit_anime_${ unitId }.png`);
+
+    console.info(`\tpngPath: [${ pngPath }]`);
+
     return Jimp.read(pngPath);
 };
 
-const processPng = function (image, options) {
-    const { unitId, animName, inputPath } = options;
+const processPng = function (image, { unitId, frames }, options) {
+    console.info(' --- Processing Png --- ');
+    const { animName, inputPath } = options;
+
     if (animName) {
+        console.error(' --- animation name --- ');
         const cgsPath = path.join(inputPath, `unit_${ animName }_cgs_${ unitId }.csv`);
-        return makeStrip(cgsPath, frames, image);
+        return makeStrip(cgsPath, frames, image, options);
     }
 
     return fs.readdirAsync(inputPath)
     .then((files) => Promise.all(files.map((file) => {
-        const extension = path.extname(file);
-        const cgsPath = path.join(inputPath, file);
-
-        if (extension === '.csv' && file.indexOf('_cgs_') >= 0 && file.indexOf(unitId) >= 0) {
-            return makeStrip(cgsPath, frames, image);
+        if (file.search(/^(unit_).+_cgs_\d+(\.csv)$/) > -1 && file.indexOf(unitId) > -1) {
+            const cgsPath = path.join(inputPath, file);
+            console.info(`\t * Make strip from ${ cgsPath }`);
+            return makeStrip(cgsPath, frames, image, options);
         }
 
-        throw new Error('Bad file input');
+        return null;
     })));
 };
 
@@ -360,12 +390,27 @@ const defaultOptions = {
     ...processArguments(process.argv),
 };
 */
+const usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-n] [-i inDir] [-o outDir]';
+
 const main = (options) => {
     const { id } = options;
+
+    if (!id || isNaN(id) || id < 0) {
+        console.info(usage);
+        return;
+    }
+
     processCggFile(id, options)
-        .then(readPng)
-        .then(processPng)
-        .then(saveFile)
+        .then((unit) => readPng(unit, options).then((image) => processPng(image, unit, options)))
+        .then((output) => {
+            if (isArray(output)) {
+                return output
+                    .filter((onefile) => onefile !== null)
+                    .map((saveInfo) => saveFile(saveInfo));
+            }
+
+            return saveFile(output);
+        })
         .catch((error) => {
             console.error(error);
         });
@@ -374,5 +419,9 @@ const main = (options) => {
 export default main;
 
 if (require.main === module) {
-    main({ ...defaultOptions, ...processArguments(process.argv) });
+    main({
+        ...defaultOptions,
+        ...processArguments(...process.argv),
+        id: parseInt(process.argv[2], 10),
+    });
 }
