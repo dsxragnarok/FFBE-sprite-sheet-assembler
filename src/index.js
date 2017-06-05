@@ -11,47 +11,26 @@ const fs = promisifyAll(_fs);
 const mkdirp = promisifyAll(_mkdirp);
 
 const processArguments = function (...args) {
-    console.log('[processArguments]', args);
-    let index = 3;
-    const { length } = args;
-    const output = {};
-
-    while (index < length) {
-        switch (args[index]) {
+    return args.reduce((options, arg, index) => {
+        switch (arg) {
         case '-a':
-            index += 1;
-            output.animName = args[index];
-            break;
+            return { ...options, animName: args[index + 1] };
         case '-c':
-            index += 1;
-            output.columns = parseInt(args[index], 10);
-            break;
+            return { ...options, columns: parseInt(args[index + 1], 10) };
         case '-e':
-            output.includeEmpty = true;
-            break;
+            return { ...options, includeEmpty: true };
         case '-i':
-            index += 1;
-            output.inputPath = args[index];
-            break;
+            return { ...options, inputPath: args[index + 1] };
         case '-o':
-            index += 1;
-            output.outputPath = args[index];
-            break;
+            return { ...options, outputPath: args[index + 1] };
         case '-v':
-            output.verbose = true;
-            break;
+            return { ...options, verbose: true };
         case '-j':
-            output.saveJson = true;
-            break;
-        case '-n':
-            output.customFilename = true;
-            break;
+            return { ...options, saveJson: true };
         default:
+            return options;
         }
-        index += 1;
-    }
-
-    return output;
+    });
 };
 
 const defaultOptions = {
@@ -372,21 +351,7 @@ const processPng = function (image, { unitId, frames }, options) {
     })));
 };
 
-/*
-const defaultOptions = {
-    id: -1,
-    animName: '',
-    columns: 0,
-    inputPath: '.',
-    outputPath: '.',
-    includeEmpty: false,
-    verbose: false,
-    saveJson: false,
-    customFilename: false,  // uid_action | default: unit_action_uid,
-    ...processArguments(process.argv),
-};
-*/
-const usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-n] [-i inDir] [-o outDir]';
+const usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
 
 const main = (options) => {
     const { id } = options;
