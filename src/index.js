@@ -42,7 +42,6 @@ const defaultOptions = {
     includeEmpty: false,    // {boolean} determines whether to include empty frames
     verbose: false,         // {boolean} determines logging verbosity
     saveJson: false,        // {boolean} determines whether to output json file
-    customFilename: false,  // {boolean} false: `unit_${action}_${uid}` | true: `${uid}_${action}`,
 };
 
 /**
@@ -125,19 +124,30 @@ const processCggFile = function (unitId, options) {
         .then((frames) => ({ unitId, frames }));
 };
 
-const saveFile = function ({ cgsPath, outputPath, image }) {
+const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson}) {
     const pathObject = path.parse(cgsPath);
     const { name } = pathObject;
     const [action, uid] = name.split('_cgs_');
 
-    const filename = `${ action }_${ uid }.png`;
-    const outputName = path.join(outputPath, filename);
+    const filename = `${ action }_${ uid }`;
+    const imagePath = path.join(outputPath, `${ filename }.png`);
+    const jsonPath = path.join(outputPath, `${ filename }.json`);
 
-    // if saveJson -> save json to file
-    // refer to old file
+    console.info(' * Saving ', imagePath);
+    const resolution = {
+        imageSave: image.then((img) => img.write(imagePath))
+            .then(() => `* * successfully saved ${ imagePath }`)
+            .catch((error) => error),
+    };
 
-    console.info(' * Saving ', outputName);
-    return image.write(outputName);
+    if (saveJson) {
+        resolution.jsonSave = fs.writeFileAsync(jsonPath, JSON.stringify(json))
+            .then(() => `* * successfully saved ${ jsonPath }`)
+            .catch((error) => error);
+    }
+
+    return resolution;
+    // return image.write(outputName);
 };
 
 const processCgsData = function (rows, frames, sourceImage, options) {
@@ -149,8 +159,7 @@ const processCgsData = function (rows, frames, sourceImage, options) {
             return null;
         }
 
-        const [frameIndex, x, y/* , delay */] = params;
-        // json.delay.push(delay);
+        const [frameIndex, x, y, delay] = params;
         return createImage(2000, 2000)
             .then((blankImage) => frames[frameIndex].reduce((compositeImage, part) => {
                 const { imgX, imgY, imgWidth, imgHeight } = part;
@@ -193,6 +202,7 @@ const processCgsData = function (rows, frames, sourceImage, options) {
                     return {
                         rect,
                         compositeImage,
+                        delay,
                     };
                 }
 
@@ -209,8 +219,8 @@ const processCgsData = function (rows, frames, sourceImage, options) {
             return animObject;
         }
 
-        const { frameImages } = animObject;
-        const { compositeImage = null, rect = null } = frame;
+        const { frameImages, frameDelays } = animObject;
+        const { compositeImage = null, rect = null, delay } = frame;
         let { topLeft, bottomRight } = animObject;
 
         if (!compositeImage || !rect) {
@@ -218,6 +228,7 @@ const processCgsData = function (rows, frames, sourceImage, options) {
         }
 
         frameImages.push(compositeImage);
+        frameDelays.push(delay);
         if (rect && topLeft === null) {
             const { x, y, width, height } = rect;
             topLeft = { x, y };
@@ -234,30 +245,25 @@ const processCgsData = function (rows, frames, sourceImage, options) {
             };
         }
 
-        return { frameImages, topLeft, bottomRight };
-    }, { frameImages: [], topLeft: null, bottomRight: null }));
+        return { frameImages, frameDelays, topLeft, bottomRight };
+    }, { frameImages: [], frameDelays: [], topLeft: null, bottomRight: null }));
 };
 
 /**
  * @todo finish implementation
  */
 const makeStrip = function (cgsPath, frames, image, options) {
-    console.info(' --- Making Animation Strip --- ');
+    console.info(' --- Making Animation Sheet --- ');
     const { columns, outputPath } = options;
 
     console.info(`\tcgsPath [${ cgsPath }]`);
-    // const { name: animation } = path.parse(cgsPath);
-    const json = {};
-
     return fs.readFileAsync(cgsPath, 'utf8')
         .then((data) => data.replace('\r').split('\n'))
-        // .then((data) => Promise.all(data.map(processCgsRowData)))
         .then((lines) => lines.map((line) => line.split(',').slice(0, -1)))
         .then((lines) => processCgsData(lines, frames, image, options))
         .then((imageObject) => {
-            console.info(' * * DONE processing Cgs Data * * ');
-            const { frameImages, topLeft, bottomRight } = imageObject;
-            console.info(topLeft, bottomRight);
+            console.info(' * * DONE processing cgs Data * * ');
+            const { frameImages, frameDelays, topLeft, bottomRight } = imageObject;
 
             const frameRect = {
                 x: topLeft.x - 5,
@@ -266,22 +272,31 @@ const makeStrip = function (cgsPath, frames, image, options) {
                 height: (bottomRight.y - topLeft.y) + 10,
             };
 
-            json.frameDimensions = frameRect;
-
-            const rows = Math.ceil(frameImages.length / columns);
+            const json = {
+                frameDelays,
+                frameRect,
+            };
 
             if (columns === 0 || columns >= frameImages.length) {
                 // animation strip
-                return createImage(frameImages.length * frameRect.width, frameRect.height)
+                json.imageWidth = frameImages.length * frameRect.width;
+                json.imageHeight = frameRect.height;
+
+                const sheet = createImage(frameImages.length * frameRect.width, frameRect.height)
                     .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
                         const { x, y, width, height } = frameRect;
                         frameObject.crop(x, y, width, height);
                         return compositeImage.composite(frameObject, index * width, 0);
                     }, img));
+
+                return { sheet, json };
             }
 
             // animation sheet
-            return createImage(columns * frameRect.width, rows * frameRect.height)
+            const rows = Math.ceil(frameImages.length / columns);
+            json.imageWidth = columns * frameRect.width;
+            json.imageHeight = rows * frameRect.height;
+            const sheet = createImage(columns * frameRect.width, rows * frameRect.height)
                 .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
                     const { x, y, width, height } = frameRect;
                     const row = Math.floor(index / columns);
@@ -290,13 +305,15 @@ const makeStrip = function (cgsPath, frames, image, options) {
                     frameObject.crop(x, y, width, height);
                     return compositeImage.composite(frameObject, col * width, row * height);
                 }, img));
+
+            return { sheet, json };
         })
-        .then((spritesheet) => { // eslint-disable-line arrow-body-style
+        .then(({ sheet, json }) => { // eslint-disable-line arrow-body-style
             const output = {
                 outputPath,
                 cgsPath,
                 json,
-                image: spritesheet,
+                image: sheet,
             };
 
             return outputPath === '.' ?
@@ -318,41 +335,43 @@ const makeStrip = function (cgsPath, frames, image, options) {
  * @param {string} options.inputPath - The file input path
  * @return {Promise} - The Promise resolving to the Jimp image of the sprite sheet
  */
-const readPng = function ({ unitId, frames }, options) {
-    console.info(' --- Read Png ---');
+const readSource = function ({ unitId, frames }, options) {
+    console.info(' --- Read Source Image ---');
 
     const { inputPath } = options;
-    const pngPath = path.join(inputPath, `unit_anime_${ unitId }.png`);
+    const sourceImagePath = path.join(inputPath, `unit_anime_${ unitId }.png`);
 
-    console.info(`\tpngPath: [${ pngPath }]`);
+    console.info(`\tsourceImagePath: [${ sourceImagePath }]`);
 
-    return Jimp.read(pngPath);
+    return Jimp.read(sourceImagePath);
 };
 
-const processPng = function (image, { unitId, frames }, options) {
-    console.info(' --- Processing Png --- ');
+const buildSheet = function (image, { unitId, frames }, options) {
     const { animName, inputPath } = options;
 
     if (animName) {
-        console.error(' --- animation name --- ');
+        console.info(' --- Building single sheet --- ');
         const cgsPath = path.join(inputPath, `unit_${ animName }_cgs_${ unitId }.csv`);
+
         return makeStrip(cgsPath, frames, image, options);
     }
 
-    return fs.readdirAsync(inputPath)
-    .then((files) => Promise.all(files.map((file) => {
-        if (file.search(/^(unit_).+_cgs_\d+(\.csv)$/) > -1 && file.indexOf(unitId) > -1) {
-            const cgsPath = path.join(inputPath, file);
-            console.info(`\t * Make strip from ${ cgsPath }`);
-            return makeStrip(cgsPath, frames, image, options);
-        }
+    console.info(' --- Building all sheets in directory --- ');
 
-        return null;
-    })));
+    return fs.readdirAsync(inputPath)
+        .then((files) => Promise.all(files.map((file) => {
+            if (file.search(/^(unit_).+_cgs_\d+(\.csv)$/) > -1 && file.indexOf(unitId) > -1) {
+                const cgsPath = path.join(inputPath, file);
+                return makeStrip(cgsPath, frames, image, options);
+            }
+
+            return null;
+        })));
 };
 
 const usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
 
+// entry point
 const main = (options) => {
     const { id } = options;
 
@@ -362,15 +381,29 @@ const main = (options) => {
     }
 
     processCggFile(id, options)
-        .then((unit) => readPng(unit, options).then((image) => processPng(image, unit, options)))
+        .then((unit) => Promise.all([unit, readSource(unit, options)]))
+        .then(([unit, image]) => buildSheet(image, unit, options))
         .then((output) => {
             if (isArray(output)) {
                 return output
                     .filter((onefile) => onefile !== null)
-                    .map((saveInfo) => saveFile(saveInfo));
+                    .map((saveInfo) => saveFile(saveInfo, options));
             }
 
-            return saveFile(output);
+            return [saveFile(output, options)];
+        })
+        .then((res) => {
+            res.forEach(({ imageSave, jsonSave }) => {
+                imageSave
+                    .then((message) => console.info(message))
+                    .catch((error) => console.error(error));
+
+                if (jsonSave) {
+                    jsonSave
+                        .then((message) => console.info(message))
+                        .catch((error) => console.error(error));
+                }
+            });
         })
         .catch((error) => {
             console.error(error);
