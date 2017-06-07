@@ -55,7 +55,6 @@ const processCggRowData = function (data, row) {
     const params = data.split(',').slice(0, -1);
     const { length } = params;
 
-    console.info(' --- Processing Cgg Row --- ', row);
     if (length < 2) {
         return null;
     }
@@ -109,14 +108,12 @@ const processCggRowData = function (data, row) {
  * @return {Promise} The Promise resolving to an object containing unitId and
  *                   the animation frames' data
  */
-const processCggFile = function (unitId, options) {
-    console.info('--- Processing Cgg File ---');
-    const { inputPath } = options;
-
+const processCggFile = function (unitId, { inputPath }) {
+    console.info(' --- Processing Cgg File');
     const { readFileAsync } = fs;
     const cggPath = path.join(inputPath, `unit_cgg_${ unitId }.csv`);
 
-    console.info(`Loading ${ cggPath }`);
+    console.info(`\tLoading [${ cggPath }]`);
 
     return readFileAsync(cggPath, 'utf8')
         .then((data) => data.replace('\r').split('\n'))
@@ -124,7 +121,13 @@ const processCggFile = function (unitId, options) {
         .then((frames) => ({ unitId, frames }));
 };
 
-const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson}) {
+/**
+ * Takes the data and writes the image and json data to file
+ * @param {Object} params Parameters object containing the data to write to file
+ * @param {Object} options The command options
+ * @returns {string} The result message
+ */
+const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson }) {
     const pathObject = path.parse(cgsPath);
     const { name } = pathObject;
     const [action, uid] = name.split('_cgs_');
@@ -133,25 +136,33 @@ const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson}) {
     const imagePath = path.join(outputPath, `${ filename }.png`);
     const jsonPath = path.join(outputPath, `${ filename }.json`);
 
-    console.info(' * Saving ', imagePath);
+    console.info(` * * Saving [${ imagePath }]`);
     const resolution = {
         imageSave: image.then((img) => img.write(imagePath))
-            .then(() => `* * successfully saved ${ imagePath }`)
+            .then(() => ` * * Successfully saved [${ imagePath }]`)
             .catch((error) => error),
     };
 
     if (saveJson) {
         resolution.jsonSave = fs.writeFileAsync(jsonPath, JSON.stringify(json))
-            .then(() => `* * successfully saved ${ jsonPath }`)
+            .then(() => ` * * Successfully saved [${ jsonPath }]`)
             .catch((error) => error);
     }
 
     return resolution;
-    // return image.write(outputName);
 };
 
+/**
+ * Processes the cgs data row by row to extract the relevant frame image information
+ * @param {array} rows An array containing the rows of data from cgs file
+ * @param {array} frames An array of frame objects defining each frame and its images
+ * @param {Jimp} sourceImage The source image
+ * @param {Object} options The command options
+ * @returns {Promise} Resolves to an object containing all the frame images and data for
+ *                      compositing the final image sheet
+ */
 const processCgsData = function (rows, frames, sourceImage, options) {
-    console.info(' --- Process Cgs Data --- ');
+    console.info(' --- Process Cgs Data');
     const { includeEmpty } = options;
 
     return Promise.all(rows.map((params) => {
@@ -214,7 +225,6 @@ const processCgsData = function (rows, frames, sourceImage, options) {
             });
     }))   // end lines.map
     .then((frameObjects) => frameObjects.reduce((animObject, frame) => {
-        console.info(' -- reducing to animObject -- ');
         if (!frame) {
             return animObject;
         }
@@ -250,10 +260,16 @@ const processCgsData = function (rows, frames, sourceImage, options) {
 };
 
 /**
- * @todo finish implementation
+ * Takes the cgs data and frame information along with the source image to composite
+ * each frame onto the final sprite sheet
+ * @param {string} cgsPath Path to the cgs file
+ * @param {array} frames The array of frame objects
+ * @param {Jimp} image The source image
+ * @param {Object} options The command options
+ * @returns {Promise} Resolves to object containing the output image and json data
  */
 const makeStrip = function (cgsPath, frames, image, options) {
-    console.info(' --- Making Animation Sheet --- ');
+    console.info(' --- Making Animation Sheet');
     const { columns, outputPath } = options;
 
     console.info(`\tcgsPath [${ cgsPath }]`);
@@ -262,7 +278,7 @@ const makeStrip = function (cgsPath, frames, image, options) {
         .then((lines) => lines.map((line) => line.split(',').slice(0, -1)))
         .then((lines) => processCgsData(lines, frames, image, options))
         .then((imageObject) => {
-            console.info(' * * DONE processing cgs Data * * ');
+            console.info(' * * DONE processing cgs Data ');
             const { frameImages, frameDelays, topLeft, bottomRight } = imageObject;
 
             const frameRect = {
@@ -324,39 +340,43 @@ const makeStrip = function (cgsPath, frames, image, options) {
 };
 
 /**
- * Reads the source png and creates an image strip for a single animation or all animations
+ * Reads the source png image
  *
  * @param {Object} unit - An object describing a single character unit
  * @param {string} unit.unitId - The unit's id
  * @param {array} unit.frames - The unit's animation frames
  * @param {Object} options - The command options
- * @param {string} options.animName - The name of animation to process,
- *                                    if not given will process all animations
  * @param {string} options.inputPath - The file input path
- * @return {Promise} - The Promise resolving to the Jimp image of the sprite sheet
+ * @return {Promise} - Resolves to the source image as Jimp
  */
-const readSource = function ({ unitId, frames }, options) {
-    console.info(' --- Read Source Image ---');
-
-    const { inputPath } = options;
+const readSource = function ({ unitId, frames }, { inputPath }) {
+    console.info(' --- Read Source Image');
     const sourceImagePath = path.join(inputPath, `unit_anime_${ unitId }.png`);
 
     console.info(`\tsourceImagePath: [${ sourceImagePath }]`);
-
     return Jimp.read(sourceImagePath);
 };
 
+/**
+ * Composites all the frames onto a single image sheet.
+ * @param {Jimp} image The image canvas
+ * @param {Object} unit The unit object
+ * @param {number} unit.unitId The unit's id
+ * @param {Array} frames The array of frame objects
+ * @param {Object} options The application options
+ * @returns {Promise} Resolves to an object containing the image and json data
+ */
 const buildSheet = function (image, { unitId, frames }, options) {
     const { animName, inputPath } = options;
 
     if (animName) {
-        console.info(' --- Building single sheet --- ');
+        console.info(' --- Building single sheet');
         const cgsPath = path.join(inputPath, `unit_${ animName }_cgs_${ unitId }.csv`);
 
         return makeStrip(cgsPath, frames, image, options);
     }
 
-    console.info(' --- Building all sheets in directory --- ');
+    console.info(' --- Building all sheets in directory');
 
     return fs.readdirAsync(inputPath)
         .then((files) => Promise.all(files.map((file) => {
@@ -369,7 +389,17 @@ const buildSheet = function (image, { unitId, frames }, options) {
         })));
 };
 
-const usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
+const usage =
+    `Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
+        num: The unit id
+        [-i]: The source input directory
+        [-o]: The output directory
+        [-a]: The animation name
+        [-c]: The number of columns
+        [-e]: Include empty frames
+        [-v]: Verbose logs
+        [-j]: Save json file
+    `;
 
 // entry point
 const main = (options) => {
