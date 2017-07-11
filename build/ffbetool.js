@@ -48512,10 +48512,6 @@ var processArguments = function processArguments() {
         args[_key] = arguments[_key];
     }
 
-    // let index = 3;
-    // const { length } = args;
-    // const output = {};
-
     return args.reduce(function (options, arg, index) {
         switch (arg) {
             case '-a':
@@ -48536,40 +48532,6 @@ var processArguments = function processArguments() {
                 return options;
         }
     });
-
-    // while (index < length) {
-    //     switch (args[index]) {
-    //     case '-a':
-    //         index += 1;
-    //         output.animName = args[index];
-    //         break;
-    //     case '-c':
-    //         index += 1;
-    //         output.columns = parseInt(args[index], 10);
-    //         break;
-    //     case '-e':
-    //         output.includeEmpty = true;
-    //         break;
-    //     case '-i':
-    //         index += 1;
-    //         output.inputPath = args[index];
-    //         break;
-    //     case '-o':
-    //         index += 1;
-    //         output.outputPath = args[index];
-    //         break;
-    //     case '-v':
-    //         output.verbose = true;
-    //         break;
-    //     case '-j':
-    //         output.saveJson = true;
-    //         break;
-    //     default:
-    //     }
-    //     index += 1;
-    // }
-
-    // return output;
 };
 
 var defaultOptions = {
@@ -48580,8 +48542,7 @@ var defaultOptions = {
     outputPath: '.', // {string} output path
     includeEmpty: false, // {boolean} determines whether to include empty frames
     verbose: false, // {boolean} determines logging verbosity
-    saveJson: false, // {boolean} determines whether to output json file
-    customFilename: false // {boolean} false: `unit_${action}_${uid}` | true: `${uid}_${action}`,
+    saveJson: false // {boolean} determines whether to output json file
 };
 
 /**
@@ -48596,7 +48557,6 @@ var processCggRowData = function processCggRowData(data, row) {
     var length = params.length;
 
 
-    console.info(' --- Processing Cgg Row --- ', row);
     if (length < 2) {
         return null;
     }
@@ -48650,14 +48610,15 @@ var processCggRowData = function processCggRowData(data, row) {
  * @return {Promise} The Promise resolving to an object containing unitId and
  *                   the animation frames' data
  */
-var processCggFile = function processCggFile(unitId, options) {
-    console.info('--- Processing Cgg File ---');
-    var inputPath = options.inputPath;
+var processCggFile = function processCggFile(unitId, _ref) {
+    var inputPath = _ref.inputPath;
+
+    console.info(' --- Processing Cgg File');
     var readFileAsync = fs.readFileAsync;
 
     var cggPath = _path2.default.join(inputPath, 'unit_cgg_' + unitId + '.csv');
 
-    console.info('Loading ' + cggPath);
+    console.info('\tLoading [' + cggPath + ']');
 
     return readFileAsync(cggPath, 'utf8').then(function (data) {
         return data.replace('\r').split('\n');
@@ -48668,10 +48629,18 @@ var processCggFile = function processCggFile(unitId, options) {
     });
 };
 
-var saveFile = function saveFile(_ref) {
-    var cgsPath = _ref.cgsPath,
-        outputPath = _ref.outputPath,
-        image = _ref.image;
+/**
+ * Takes the data and writes the image and json data to file
+ * @param {Object} params Parameters object containing the data to write to file
+ * @param {Object} options The command options
+ * @returns {string} The result message
+ */
+var saveFile = function saveFile(_ref2, _ref3) {
+    var cgsPath = _ref2.cgsPath,
+        json = _ref2.json,
+        image = _ref2.image;
+    var saveJson = _ref3.saveJson,
+        outputPath = _ref3.outputPath;
 
     var pathObject = _path2.default.parse(cgsPath);
     var name = pathObject.name;
@@ -48681,32 +48650,56 @@ var saveFile = function saveFile(_ref) {
         action = _name$split2[0],
         uid = _name$split2[1];
 
-    var filename = action + '_' + uid + '.png';
-    var outputName = _path2.default.join(outputPath, filename);
+    var filename = action + '_' + uid;
+    var imagePath = _path2.default.join(outputPath, filename + '.png');
+    var jsonPath = _path2.default.join(outputPath, filename + '.json');
 
-    // if saveJson -> save json to file
-    // refer to old file
+    console.info(' * * Saving [' + imagePath + ']');
+    var resolution = {
+        imageSave: image.then(function (img) {
+            return img.write(imagePath);
+        }).then(function () {
+            return ' * * Successfully saved [' + imagePath + ']';
+        }).catch(function (error) {
+            return error;
+        })
+    };
 
-    console.info(' * Saving ', outputName);
-    return image.write(outputName);
+    if (saveJson) {
+        resolution.jsonSave = fs.writeFileAsync(jsonPath, JSON.stringify(json)).then(function () {
+            return ' * * Successfully saved [' + jsonPath + ']';
+        }).catch(function (error) {
+            return error;
+        });
+    }
+
+    return resolution;
 };
 
-var processCgsData = function processCgsData(rows, frames, sourceImage, options) {
-    console.info(' --- Process Cgs Data --- ');
-    var includeEmpty = options.includeEmpty;
+/**
+ * Processes the cgs data row by row to extract the relevant frame image information
+ * @param {array} rows An array containing the rows of data from cgs file
+ * @param {array} frames An array of frame objects defining each frame and its images
+ * @param {Jimp} sourceImage The source image
+ * @param {Object} options The command options
+ * @returns {Promise} Resolves to an object containing all the frame images and data for
+ *                      compositing the final image sheet
+ */
+var processCgsData = function processCgsData(rows, frames, sourceImage, _ref4) {
+    var includeEmpty = _ref4.includeEmpty;
 
+    console.info(' --- Process Cgs Data');
 
     return Promise.all(rows.map(function (params) {
         if (params.length < 2) {
             return null;
         }
 
-        var _params2 = _slicedToArray(params, 3),
+        var _params2 = _slicedToArray(params, 4),
             frameIndex = _params2[0],
             x = _params2[1],
-            y /* , delay */ = _params2[2];
-        // json.delay.push(delay);
-
+            y = _params2[2],
+            delay = _params2[3];
 
         return (0, _Image.createImage)(2000, 2000).then(function (blankImage) {
             return frames[frameIndex].reduce(function (compositeImage, part) {
@@ -48749,7 +48742,8 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, options)
             if (rect.width > 0 && rect.height > 0 || includeEmpty) {
                 return {
                     rect: rect,
-                    compositeImage: compositeImage
+                    compositeImage: compositeImage,
+                    delay: delay
                 };
             }
 
@@ -48761,16 +48755,17 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, options)
     }) // end lines.map
     ).then(function (frameObjects) {
         return frameObjects.reduce(function (animObject, frame) {
-            console.info(' -- reducing to animObject -- ');
             if (!frame) {
                 return animObject;
             }
 
-            var frameImages = animObject.frameImages;
+            var frameImages = animObject.frameImages,
+                frameDelays = animObject.frameDelays;
             var _frame$compositeImage = frame.compositeImage,
                 compositeImage = _frame$compositeImage === undefined ? null : _frame$compositeImage,
                 _frame$rect = frame.rect,
-                rect = _frame$rect === undefined ? null : _frame$rect;
+                rect = _frame$rect === undefined ? null : _frame$rect,
+                delay = frame.delay;
             var topLeft = animObject.topLeft,
                 bottomRight = animObject.bottomRight;
 
@@ -48780,6 +48775,7 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, options)
             }
 
             frameImages.push(compositeImage);
+            frameDelays.push(delay);
             if (rect && topLeft === null) {
                 var x = rect.x,
                     y = rect.y,
@@ -48804,41 +48800,42 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, options)
                 };
             }
 
-            return { frameImages: frameImages, topLeft: topLeft, bottomRight: bottomRight };
-        }, { frameImages: [], topLeft: null, bottomRight: null });
+            return { frameImages: frameImages, frameDelays: frameDelays, topLeft: topLeft, bottomRight: bottomRight };
+        }, { frameImages: [], frameDelays: [], topLeft: null, bottomRight: null });
     });
 };
 
 /**
- * @todo finish implementation
+ * Takes the cgs data and frame information along with the source image to composite
+ * each frame onto the final sprite sheet
+ * @param {string} cgsPath Path to the cgs file
+ * @param {array} frames The array of frame objects
+ * @param {Jimp} image The source image
+ * @param {Object} options The command options
+ * @returns {Promise} Resolves to object containing the output image and json data
  */
 var makeStrip = function makeStrip(cgsPath, frames, image, options) {
-    console.info(' --- Making Animation Strip --- ');
+    console.info(' --- Making Animation Sheet');
     var columns = options.columns,
         outputPath = options.outputPath;
 
 
     console.info('\tcgsPath [' + cgsPath + ']');
-    // const { name: animation } = path.parse(cgsPath);
-    var json = {};
-
     return fs.readFileAsync(cgsPath, 'utf8').then(function (data) {
         return data.replace('\r').split('\n');
-    }
-    // .then((data) => Promise.all(data.map(processCgsRowData)))
-    ).then(function (lines) {
+    }).then(function (lines) {
         return lines.map(function (line) {
             return line.split(',').slice(0, -1);
         });
     }).then(function (lines) {
         return processCgsData(lines, frames, image, options);
     }).then(function (imageObject) {
-        console.info(' * * DONE processing Cgs Data * * ');
+        console.info(' * * DONE processing cgs Data ');
         var frameImages = imageObject.frameImages,
+            frameDelays = imageObject.frameDelays,
             topLeft = imageObject.topLeft,
             bottomRight = imageObject.bottomRight;
 
-        console.info(topLeft, bottomRight);
 
         var frameRect = {
             x: topLeft.x - 5,
@@ -48847,13 +48844,17 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
             height: bottomRight.y - topLeft.y + 10
         };
 
-        json.frameDimensions = frameRect;
-
-        var rows = Math.ceil(frameImages.length / columns);
+        var json = {
+            frameDelays: frameDelays,
+            frameRect: frameRect
+        };
 
         if (columns === 0 || columns >= frameImages.length) {
             // animation strip
-            return (0, _Image.createImage)(frameImages.length * frameRect.width, frameRect.height).then(function (img) {
+            json.imageWidth = frameImages.length * frameRect.width;
+            json.imageHeight = frameRect.height;
+
+            var _sheet = (0, _Image.createImage)(frameImages.length * frameRect.width, frameRect.height).then(function (img) {
                 return frameImages.reduce(function (compositeImage, frameObject, index) {
                     var x = frameRect.x,
                         y = frameRect.y,
@@ -48864,10 +48865,15 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
                     return compositeImage.composite(frameObject, index * width, 0);
                 }, img);
             });
+
+            return { sheet: _sheet, json: json };
         }
 
         // animation sheet
-        return (0, _Image.createImage)(columns * frameRect.width, rows * frameRect.height).then(function (img) {
+        var rows = Math.ceil(frameImages.length / columns);
+        json.imageWidth = columns * frameRect.width;
+        json.imageHeight = rows * frameRect.height;
+        var sheet = (0, _Image.createImage)(columns * frameRect.width, rows * frameRect.height).then(function (img) {
             return frameImages.reduce(function (compositeImage, frameObject, index) {
                 var x = frameRect.x,
                     y = frameRect.y,
@@ -48881,13 +48887,16 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
                 return compositeImage.composite(frameObject, col * width, row * height);
             }, img);
         });
-    }).then(function (spritesheet) {
+
+        return { sheet: sheet, json: json };
+    }).then(function (_ref5) {
+        var sheet = _ref5.sheet,
+            json = _ref5.json;
         // eslint-disable-line arrow-body-style
         var output = {
-            outputPath: outputPath,
             cgsPath: cgsPath,
             json: json,
-            image: spritesheet
+            image: sheet
         };
 
         return outputPath === '.' ? output : mkdirp.mkdirpAsync(outputPath).then(function () {
@@ -48897,52 +48906,56 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
 };
 
 /**
- * Reads the source png and creates an image strip for a single animation or all animations
+ * Reads the source png image
  *
  * @param {Object} unit - An object describing a single character unit
  * @param {string} unit.unitId - The unit's id
  * @param {array} unit.frames - The unit's animation frames
  * @param {Object} options - The command options
- * @param {string} options.animName - The name of animation to process,
- *                                    if not given will process all animations
  * @param {string} options.inputPath - The file input path
- * @return {Promise} - The Promise resolving to the Jimp image of the sprite sheet
+ * @return {Promise} - Resolves to the source image as Jimp
  */
-var readPng = function readPng(_ref2, options) {
-    var unitId = _ref2.unitId,
-        frames = _ref2.frames;
+var readSource = function readSource(_ref6, _ref7) {
+    var unitId = _ref6.unitId,
+        frames = _ref6.frames;
+    var inputPath = _ref7.inputPath;
 
-    console.info(' --- Read Png ---');
+    console.info(' --- Read Source Image');
+    var sourceImagePath = _path2.default.join(inputPath, 'unit_anime_' + unitId + '.png');
 
-    var inputPath = options.inputPath;
-
-    var pngPath = _path2.default.join(inputPath, 'unit_anime_' + unitId + '.png');
-
-    console.info('\tpngPath: [' + pngPath + ']');
-
-    return _jimp2.default.read(pngPath);
+    console.info('\tsourceImagePath: [' + sourceImagePath + ']');
+    return _jimp2.default.read(sourceImagePath);
 };
 
-var processPng = function processPng(image, _ref3, options) {
-    var unitId = _ref3.unitId,
-        frames = _ref3.frames;
-
-    console.info(' --- Processing Png --- ');
+/**
+ * Composites all the frames onto a single image sheet.
+ * @param {Jimp} image The image canvas
+ * @param {Object} unit The unit object
+ * @param {number} unit.unitId The unit's id
+ * @param {Array} frames The array of frame objects
+ * @param {Object} options The application options
+ * @returns {Promise} Resolves to an object containing the image and json data
+ */
+var buildSheet = function buildSheet(image, _ref8, options) {
+    var unitId = _ref8.unitId,
+        frames = _ref8.frames;
     var animName = options.animName,
         inputPath = options.inputPath;
 
 
     if (animName) {
-        console.error(' --- animation name --- ');
+        console.info(' --- Building single sheet');
         var cgsPath = _path2.default.join(inputPath, 'unit_' + animName + '_cgs_' + unitId + '.csv');
+
         return makeStrip(cgsPath, frames, image, options);
     }
+
+    console.info(' --- Building all sheets in directory');
 
     return fs.readdirAsync(inputPath).then(function (files) {
         return Promise.all(files.map(function (file) {
             if (file.search(/^(unit_).+_cgs_\d+(\.csv)$/) > -1 && file.indexOf(unitId) > -1) {
                 var _cgsPath = _path2.default.join(inputPath, file);
-                console.info('\t * Make strip from ' + _cgsPath);
                 return makeStrip(_cgsPath, frames, image, options);
             }
 
@@ -48951,8 +48964,9 @@ var processPng = function processPng(image, _ref3, options) {
     });
 };
 
-var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]';
+var usage = 'Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]\n        num: The unit id\n        [-i]: The source input directory\n        [-o]: The output directory\n        [-a]: The animation name\n        [-c]: The number of columns\n        [-e]: Include empty frames\n        [-v]: Verbose logs\n        [-j]: Save json file\n    ';
 
+// entry point
 var main = function main(options) {
     var id = options.id;
 
@@ -48963,19 +48977,42 @@ var main = function main(options) {
     }
 
     processCggFile(id, options).then(function (unit) {
-        return readPng(unit, options).then(function (image) {
-            return processPng(image, unit, options);
-        });
+        return Promise.all([unit, readSource(unit, options)]);
+    }).then(function (_ref9) {
+        var _ref10 = _slicedToArray(_ref9, 2),
+            unit = _ref10[0],
+            image = _ref10[1];
+
+        return buildSheet(image, unit, options);
     }).then(function (output) {
         if ((0, _lodash.isArray)(output)) {
             return output.filter(function (onefile) {
                 return onefile !== null;
             }).map(function (saveInfo) {
-                return saveFile(saveInfo);
+                return saveFile(saveInfo, options);
             });
         }
 
-        return saveFile(output);
+        return [saveFile(output, options)];
+    }).then(function (res) {
+        res.forEach(function (_ref11) {
+            var imageSave = _ref11.imageSave,
+                jsonSave = _ref11.jsonSave;
+
+            imageSave.then(function (message) {
+                return console.info(message);
+            }).catch(function (error) {
+                return console.error(error);
+            });
+
+            if (jsonSave) {
+                jsonSave.then(function (message) {
+                    return console.info(message);
+                }).catch(function (error) {
+                    return console.error(error);
+                });
+            }
+        });
     }).catch(function (error) {
         console.error(error);
     });

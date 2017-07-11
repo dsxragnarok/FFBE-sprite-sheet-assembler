@@ -127,7 +127,7 @@ const processCggFile = function (unitId, { inputPath }) {
  * @param {Object} options The command options
  * @returns {string} The result message
  */
-const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson }) {
+const saveFile = function ({ cgsPath, json, image }, { saveJson, outputPath }) {
     const pathObject = path.parse(cgsPath);
     const { name } = pathObject;
     const [action, uid] = name.split('_cgs_');
@@ -161,9 +161,8 @@ const saveFile = function ({ cgsPath, outputPath, json, image }, { saveJson }) {
  * @returns {Promise} Resolves to an object containing all the frame images and data for
  *                      compositing the final image sheet
  */
-const processCgsData = function (rows, frames, sourceImage, options) {
+const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
     console.info(' --- Process Cgs Data');
-    const { includeEmpty } = options;
 
     return Promise.all(rows.map((params) => {
         if (params.length < 2) {
@@ -326,7 +325,6 @@ const makeStrip = function (cgsPath, frames, image, options) {
         })
         .then(({ sheet, json }) => { // eslint-disable-line arrow-body-style
             const output = {
-                outputPath,
                 cgsPath,
                 json,
                 image: sheet,
