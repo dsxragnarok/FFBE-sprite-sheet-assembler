@@ -1,3 +1,12 @@
+## [0.2.3]
+
+### Changes
+
+* Removed the [-n] option
+* Bundle the and dependencies into **build/ffbetool.js** so the can be run without requiring `npm install`
+* Refactored for maintainability
+* Use ES6
+
 ## [0.2.2]
 
 ### New Features
