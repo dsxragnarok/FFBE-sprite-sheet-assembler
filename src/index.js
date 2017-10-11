@@ -27,6 +27,8 @@ const processArguments = function (...args) {
             return { ...options, verbose: true };
         case '-j':
             return { ...options, saveJson: true };
+        case '-g':
+            return { ...options, outputGif: true };
         default:
             return options;
         }
@@ -42,6 +44,7 @@ const defaultOptions = {
     includeEmpty: false,    // {boolean} determines whether to include empty frames
     verbose: false,         // {boolean} determines logging verbosity
     saveJson: false,        // {boolean} determines whether to output json file
+    outputGif: false,       // {boolean} determines whether to output animated gif
 };
 
 /**
@@ -388,7 +391,7 @@ const buildSheet = function (image, { unitId, frames }, options) {
 };
 
 const usage =
-    `Usage: ffbetool num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
+    `Usage: ffbetool num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
         num: The unit id
         [-i]: The source input directory
         [-o]: The output directory
@@ -397,6 +400,7 @@ const usage =
         [-e]: Include empty frames
         [-v]: Verbose logs
         [-j]: Save json file
+        [-g]: Save animated gif
     `;
 
 // entry point
