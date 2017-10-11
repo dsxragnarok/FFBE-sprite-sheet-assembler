@@ -388,7 +388,7 @@ const buildSheet = function (image, { unitId, frames }, options) {
 };
 
 const usage =
-    `Usage: main num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
+    `Usage: ffbetool num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
         num: The unit id
         [-i]: The source input directory
         [-o]: The output directory
