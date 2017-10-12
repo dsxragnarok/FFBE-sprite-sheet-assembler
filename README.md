@@ -12,17 +12,18 @@ to assemble the sprite sheet.
 
 ### Usage
 ```
-node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-i inDir] [-o outDir]
+node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
 
 ```
-* num: (required) the unit ID number, must be the first argument.
-* -a: The animation name (ie. atk, idle, dead, win, etc.).
-* -c: The number of columns in the sheet, if not specified the output will be a single-row strip.
-* -e: If this option is included, the strips will include any empty frames. By default empty frames are excluded.
-* -v: If this option is included, more information will be printed to console.
-* -j: This option saves the sheet information in json format saved as a .json file.
-* -i: The input path, defaults to current directory.
-* -o: The output path, defaults to current directory.
+* **num:** (required) the unit ID number, must be the first argument.
+* **-a:** The animation name (ie. atk, idle, dead, win, etc.).
+* **-c:** The number of columns in the sheet, if not specified the output will be a single-row strip.
+* **-e:** If this option is included, the strips will include any empty frames. By default empty frames are excluded.
+* **-v:** If this option is included, more information will be printed to console.
+* **-j:** This option saves the sheet information in json format saved as a .json file.
+* **-g:** If htis option is included, an animated gif will also be outputed.
+* **-i:** The input path, defaults to current directory.
+* **-o:** The output path, defaults to current directory.
 
 
 ### References

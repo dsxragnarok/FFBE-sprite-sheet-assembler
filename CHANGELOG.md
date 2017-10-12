@@ -1,3 +1,9 @@
+## [0.3.0]
+
+### New Features
+
+* Added the [-g] option to output an animated gif
+
 ## [0.2.3]
 
 ### Changes

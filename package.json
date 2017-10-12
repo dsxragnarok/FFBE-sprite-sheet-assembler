@@ -1,6 +1,6 @@
 {
   "name": "ffbetool",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "tool to construct animation frames from png and ccg information",
   "main": "build/ffbetool.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.5.0",
+    "gifencoder": "^1.1.0",
     "jimp": "^0.2.24",
     "lodash": "^4.17.4",
     "mkdirp": "^0.5.1"
