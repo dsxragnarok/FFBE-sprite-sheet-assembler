@@ -348,21 +348,6 @@ const makeStrip = function (cgsPath, frames, image, options) {
                     cgsPath,
                 }, options);
             }
-            // gif part
-            // console.log('options', options);
-            // const encoder = new GIFEncoder(frameRect.width, frameRect.height);
-            // encoder.createReadStream().pipe(fs.createWriteStream('./tmp/test-2.gif'));
-            // encoder.start();
-            // encoder.setRepeat(0);
-
-            // frameImages.forEach((frameImage, index) => {
-            //     const { x, y, width, height } = frameRect;
-            //     encoder.setDelay((frameDelays[index] / 60) * 1000);
-            //     encoder.addFrame(frameImage.clone().crop(x, y, width, height).bitmap.data);
-            // });
-
-            // encoder.finish();
-            // --------
 
             if (columns === 0 || columns >= frameImages.length) {
                 // animation strip

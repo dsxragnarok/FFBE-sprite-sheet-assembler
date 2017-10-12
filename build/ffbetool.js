@@ -46953,6 +46953,16 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, _ref4) {
     });
 };
 
+/**
+ * Composites all the frames into an animated gif
+ *
+ * @param {Object} framesData The object data containing all frame information
+ * @param {Array} framesData.frames The list of frame images
+ * @param {Object} framesData.dimensions The object containing the frame Rect
+ * @param {number|Array} framesData.delays The delay between each frames
+ * @param {string} framesData.cgsPath The path to the cgs data file
+ * @param {Object} options The command options
+ */
 var encodeAnimatedGif = function encodeAnimatedGif(_ref5) {
     var _ref5$frames = _ref5.frames,
         frames = _ref5$frames === undefined ? [] : _ref5$frames,
@@ -47050,21 +47060,6 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
                 cgsPath: cgsPath
             }, options);
         }
-        // gif part
-        // console.log('options', options);
-        // const encoder = new GIFEncoder(frameRect.width, frameRect.height);
-        // encoder.createReadStream().pipe(fs.createWriteStream('./tmp/test-2.gif'));
-        // encoder.start();
-        // encoder.setRepeat(0);
-
-        // frameImages.forEach((frameImage, index) => {
-        //     const { x, y, width, height } = frameRect;
-        //     encoder.setDelay((frameDelays[index] / 60) * 1000);
-        //     encoder.addFrame(frameImage.clone().crop(x, y, width, height).bitmap.data);
-        // });
-
-        // encoder.finish();
-        // --------
 
         if (columns === 0 || columns >= frameImages.length) {
             // animation strip
