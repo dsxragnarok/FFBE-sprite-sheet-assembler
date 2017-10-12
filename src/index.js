@@ -4,6 +4,7 @@ import _fs from 'fs';
 import _mkdirp from 'mkdirp';
 import { promisifyAll } from 'bluebird';
 import { chunk, isArray } from 'lodash';
+import GIFEncoder from 'gifencoder';
 
 import { createImage, blend, getColorBoundsRect } from './Image';
 
@@ -262,6 +263,50 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
 };
 
 /**
+ * Composites all the frames into an animated gif
+ *
+ * @param {Object} framesData The object data containing all frame information
+ * @param {Array} framesData.frames The list of frame images
+ * @param {Object} framesData.dimensions The object containing the frame Rect
+ * @param {number|Array} framesData.delays The delay between each frames
+ * @param {string} framesData.cgsPath The path to the cgs data file
+ * @param {Object} options The command options
+ */
+const encodeAnimatedGif = function ({
+    frames = [],
+    dimensions = {},
+    delays = 500,
+    cgsPath = '',
+},
+    options = {},
+) {
+    const { outputPath } = options;
+    const pathObject = path.parse(cgsPath);
+    const { name } = pathObject;
+    const [action, uid] = name.split('_cgs_');
+
+    const filename = `${ action }_${ uid }`;
+    const imagePath = path.join(outputPath, `${ filename }.gif`);
+
+    console.info(` * * Saving Animated Gif: [${ imagePath }]`);
+
+    const { x, y, width, height } = dimensions;
+    const encoder = new GIFEncoder(width, height);
+    encoder.createReadStream().pipe(fs.createWriteStream(imagePath));
+    encoder.start();
+    encoder.setRepeat(0);
+
+    frames.forEach((frame, index) => {
+        const frameDelay = typeof delays === 'number' ? delays : delays[index];
+        encoder.setDelay((frameDelay / 60) * 1000);
+        encoder.addFrame(frame.clone().crop(x, y, width, height).bitmap.data);
+    });
+
+    encoder.finish();
+    console.info(` * * Successfully saved [${ imagePath }]`);
+};
+
+/**
  * Takes the cgs data and frame information along with the source image to composite
  * each frame onto the final sprite sheet
  * @param {string} cgsPath Path to the cgs file
@@ -295,6 +340,30 @@ const makeStrip = function (cgsPath, frames, image, options) {
                 frameRect,
             };
 
+            if (options.outputGif) {
+                encodeAnimatedGif({
+                    frames: frameImages,
+                    dimensions: frameRect,
+                    delays: frameDelays,
+                    cgsPath,
+                }, options);
+            }
+            // gif part
+            // console.log('options', options);
+            // const encoder = new GIFEncoder(frameRect.width, frameRect.height);
+            // encoder.createReadStream().pipe(fs.createWriteStream('./tmp/test-2.gif'));
+            // encoder.start();
+            // encoder.setRepeat(0);
+
+            // frameImages.forEach((frameImage, index) => {
+            //     const { x, y, width, height } = frameRect;
+            //     encoder.setDelay((frameDelays[index] / 60) * 1000);
+            //     encoder.addFrame(frameImage.clone().crop(x, y, width, height).bitmap.data);
+            // });
+
+            // encoder.finish();
+            // --------
+
             if (columns === 0 || columns >= frameImages.length) {
                 // animation strip
                 json.imageWidth = frameImages.length * frameRect.width;
@@ -304,6 +373,7 @@ const makeStrip = function (cgsPath, frames, image, options) {
                     .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
                         const { x, y, width, height } = frameRect;
                         frameObject.crop(x, y, width, height);
+
                         return compositeImage.composite(frameObject, index * width, 0);
                     }, img));
 
