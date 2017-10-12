@@ -1,6 +1,6 @@
 {
   "name": "ffbetool",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "tool to construct animation frames from png and ccg information",
   "main": "build/ffbetool.js",
   "scripts": {
