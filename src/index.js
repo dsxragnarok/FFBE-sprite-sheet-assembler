@@ -1,12 +1,12 @@
-import path from 'path';
-import Jimp from 'jimp';
-import _fs from 'fs';
-import _mkdirp from 'mkdirp';
-import { promisifyAll } from 'bluebird';
-import { chunk, isArray } from 'lodash';
-import GIFEncoder from 'gifencoder';
+const path = require('path');
+const Jimp = require('jimp');
+const _fs = require('fs');          // eslint-disable-line no-underscore-dangle
+const _mkdirp = require('mkdirp');  // eslint-disable-line no-underscore-dangle
+const { promisifyAll } = require('bluebird');
+const { chunk, isArray } = require('lodash');
+const GIFEncoder = require('gifencoder');
 
-import { createImage, blend, getColorBoundsRect } from './Image';
+const { createImage, blend, getColorBoundsRect } = require('./Image');
 
 const fs = promisifyAll(_fs);
 const mkdirp = promisifyAll(_mkdirp);
@@ -497,7 +497,8 @@ const main = (options) => {
         });
 };
 
-export default main;
+module.exports = main;
+// export default main;
 
 if (require.main === module) {
     main({

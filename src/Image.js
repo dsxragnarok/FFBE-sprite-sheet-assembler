@@ -1,5 +1,7 @@
-import Jimp, { intToRGBA, rgbaToInt } from 'jimp';
-import { range } from 'lodash';
+const Jimp = require('jimp');
+const { range } = require('lodash');
+
+const { intToRGBA, rgbaToInt } = Jimp;
 
 /**
  * Creates a Promise wrapper around Jimp's constructor.
@@ -8,7 +10,7 @@ import { range } from 'lodash';
  * @param {number} height - The image height in pixels
  * @return {Promise} - Promise resolving to a Jimp object
  */
-export const createImage = function (width, height) {
+const createImage = function (width, height) {
     return new Promise((resolve, reject) => {
         // eslint-disable-next-line no-new
         new Jimp(width, height, (err, image) => {
@@ -65,7 +67,7 @@ const convertColorTo255Range = function ({ r, g, b, a }) {
  * @param {Jimp}    The Jimp image object to apply blending
  * @return {Jimp}   The transformed Jimp image object
  */
-export const blend = function (image) {
+const blend = function (image) {
     const { width, height } = image.bitmap;
 
     range(width).forEach((col) => {
@@ -109,7 +111,7 @@ export const blend = function (image) {
    space around an image, pass {mask: 0xFFFFFFFF, color: 0xFFFFFFFF} to find the bounds of nonwhite
    pixels.
 */
-export const getColorBoundsRect = function (image, mask, color, findColor) {
+const getColorBoundsRect = function (image, mask, color, findColor) {
     // findColor : value & mask === color
     // !findColor : value & mask !== color
     const { width, height } = image.bitmap;
@@ -142,7 +144,8 @@ export const getColorBoundsRect = function (image, mask, color, findColor) {
     };
 };
 
-export default {
+// export default {
+module.exports = {
     createImage,
     blend,
     getColorBoundsRect,
