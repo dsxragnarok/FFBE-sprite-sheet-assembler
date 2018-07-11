@@ -41035,18 +41035,13 @@ module.exports = require("tls");
 "use strict";
 
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-exports.getColorBoundsRect = exports.blend = exports.createImage = undefined;
+var Jimp = __webpack_require__(70);
 
-var _jimp = __webpack_require__(70);
+var _require = __webpack_require__(71),
+    range = _require.range;
 
-var _jimp2 = _interopRequireDefault(_jimp);
-
-var _lodash = __webpack_require__(71);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+var intToRGBA = Jimp.intToRGBA,
+    rgbaToInt = Jimp.rgbaToInt;
 
 /**
  * Creates a Promise wrapper around Jimp's constructor.
@@ -41055,10 +41050,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * @param {number} height - The image height in pixels
  * @return {Promise} - Promise resolving to a Jimp object
  */
-var createImage = exports.createImage = function createImage(width, height) {
+
+var createImage = function createImage(width, height) {
     return new Promise(function (resolve, reject) {
         // eslint-disable-next-line no-new
-        new _jimp2.default(width, height, function (err, image) {
+        new Jimp(width, height, function (err, image) {
             if (err) {
                 return reject(err);
             }
@@ -41122,15 +41118,15 @@ var convertColorTo255Range = function convertColorTo255Range(_ref2) {
  * @param {Jimp}    The Jimp image object to apply blending
  * @return {Jimp}   The transformed Jimp image object
  */
-var blend = exports.blend = function blend(image) {
+var blend = function blend(image) {
     var _image$bitmap = image.bitmap,
         width = _image$bitmap.width,
         height = _image$bitmap.height;
 
 
-    (0, _lodash.range)(width).forEach(function (col) {
-        (0, _lodash.range)(height).forEach(function (row) {
-            var _convertColorToDecima = convertColorToDecimalRange((0, _jimp.intToRGBA)(image.getPixelColor(col, row))),
+    range(width).forEach(function (col) {
+        range(height).forEach(function (row) {
+            var _convertColorToDecima = convertColorToDecimalRange(intToRGBA(image.getPixelColor(col, row))),
                 a = _convertColorToDecima.a,
                 r = _convertColorToDecima.r,
                 g = _convertColorToDecima.g,
@@ -41144,7 +41140,7 @@ var blend = exports.blend = function blend(image) {
                     a: (r + g + b) / 3
                 });
 
-                image.setPixelColor((0, _jimp.rgbaToInt)(pixel.r, pixel.g, pixel.b, pixel.a), col, row);
+                image.setPixelColor(rgbaToInt(pixel.r, pixel.g, pixel.b, pixel.a), col, row);
             }
         });
     });
@@ -41172,7 +41168,7 @@ var blend = exports.blend = function blend(image) {
    space around an image, pass {mask: 0xFFFFFFFF, color: 0xFFFFFFFF} to find the bounds of nonwhite
    pixels.
 */
-var getColorBoundsRect = exports.getColorBoundsRect = function getColorBoundsRect(image, mask, color, findColor) {
+var getColorBoundsRect = function getColorBoundsRect(image, mask, color, findColor) {
     // findColor : value & mask === color
     // !findColor : value & mask !== color
     var _image$bitmap2 = image.bitmap,
@@ -41180,8 +41176,8 @@ var getColorBoundsRect = exports.getColorBoundsRect = function getColorBoundsRec
         height = _image$bitmap2.height;
 
 
-    var extremities = (0, _lodash.range)(height).reduce(function (acc, row) {
-        return (0, _lodash.range)(width).reduce(function (obj, col) {
+    var extremities = range(height).reduce(function (acc, row) {
+        return range(width).reduce(function (obj, col) {
             var pixelColor = image.getPixelColor(col, row);
 
             // eslint-disable-next-line no-bitwise
@@ -41216,7 +41212,8 @@ var getColorBoundsRect = exports.getColorBoundsRect = function getColorBoundsRec
     };
 };
 
-exports.default = {
+// export default {
+module.exports = {
     createImage: createImage,
     blend: blend,
     getColorBoundsRect: getColorBoundsRect
@@ -46609,48 +46606,35 @@ function DoublyLinkedNode(key, val) {
 "use strict";
 /* WEBPACK VAR INJECTION */(function(module) {
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _path = __webpack_require__(14);
-
-var _path2 = _interopRequireDefault(_path);
-
-var _jimp = __webpack_require__(70);
-
-var _jimp2 = _interopRequireDefault(_jimp);
-
-var _fs2 = __webpack_require__(13);
-
-var _fs3 = _interopRequireDefault(_fs2);
-
-var _mkdirp2 = __webpack_require__(72);
-
-var _mkdirp3 = _interopRequireDefault(_mkdirp2);
-
-var _bluebird = __webpack_require__(134);
-
-var _lodash = __webpack_require__(71);
-
-var _gifencoder = __webpack_require__(135);
-
-var _gifencoder2 = _interopRequireDefault(_gifencoder);
-
-var _Image = __webpack_require__(133);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _toArray(arr) { return Array.isArray(arr) ? arr : Array.from(arr); }
 
-var fs = (0, _bluebird.promisifyAll)(_fs3.default);
-var mkdirp = (0, _bluebird.promisifyAll)(_mkdirp3.default);
+var path = __webpack_require__(14);
+var Jimp = __webpack_require__(70);
+var _fs = __webpack_require__(13); // eslint-disable-line no-underscore-dangle
+var _mkdirp = __webpack_require__(72); // eslint-disable-line no-underscore-dangle
+
+var _require = __webpack_require__(134),
+    promisifyAll = _require.promisifyAll;
+
+var _require2 = __webpack_require__(71),
+    chunk = _require2.chunk,
+    isArray = _require2.isArray;
+
+var GIFEncoder = __webpack_require__(135);
+
+var _require3 = __webpack_require__(133),
+    createImage = _require3.createImage,
+    blend = _require3.blend,
+    getColorBoundsRect = _require3.getColorBoundsRect;
+
+var fs = promisifyAll(_fs);
+var mkdirp = promisifyAll(_mkdirp);
 
 var processArguments = function processArguments() {
     for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
@@ -46714,7 +46698,7 @@ var processCggRowData = function processCggRowData(data, row) {
         count = _params[1],
         rest = _params.slice(2);
 
-    return (0, _lodash.chunk)(rest, rest.length / count).map(function (config, index) {
+    return chunk(rest, rest.length / count).map(function (config, index) {
         var _config = _slicedToArray(config, 11),
             xPos = _config[0],
             yPos = _config[1],
@@ -46764,7 +46748,7 @@ var processCggFile = function processCggFile(unitId, _ref) {
     console.info(' --- Processing Cgg File');
     var readFileAsync = fs.readFileAsync;
 
-    var cggPath = _path2.default.join(inputPath, 'unit_cgg_' + unitId + '.csv');
+    var cggPath = path.join(inputPath, 'unit_cgg_' + unitId + '.csv');
 
     console.info('\tLoading [' + cggPath + ']');
 
@@ -46790,7 +46774,7 @@ var saveFile = function saveFile(_ref2, _ref3) {
     var saveJson = _ref3.saveJson,
         outputPath = _ref3.outputPath;
 
-    var pathObject = _path2.default.parse(cgsPath);
+    var pathObject = path.parse(cgsPath);
     var name = pathObject.name;
 
     var _name$split = name.split('_cgs_'),
@@ -46799,8 +46783,8 @@ var saveFile = function saveFile(_ref2, _ref3) {
         uid = _name$split2[1];
 
     var filename = action + '_' + uid;
-    var imagePath = _path2.default.join(outputPath, filename + '.png');
-    var jsonPath = _path2.default.join(outputPath, filename + '.json');
+    var imagePath = path.join(outputPath, filename + '.png');
+    var jsonPath = path.join(outputPath, filename + '.json');
 
     console.info(' * * Saving [' + imagePath + ']');
     var resolution = {
@@ -46849,7 +46833,7 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, _ref4) {
             y = _params2[2],
             delay = _params2[3];
 
-        return (0, _Image.createImage)(2000, 2000).then(function (blankImage) {
+        return createImage(2000, 2000).then(function (blankImage) {
             return frames[frameIndex].reduce(function (compositeImage, part) {
                 var imgX = part.imgX,
                     imgY = part.imgY,
@@ -46868,7 +46852,7 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, _ref4) {
 
 
                 if (blendMode === 1) {
-                    crop = (0, _Image.blend)(crop);
+                    crop = blend(crop);
                 }
 
                 if (flipX || flipY) {
@@ -46886,7 +46870,7 @@ var processCgsData = function processCgsData(rows, frames, sourceImage, _ref4) {
                 return compositeImage.composite(crop, 2000 / 2 + parseInt(x, 10) + xPos, 2000 / 2 + parseInt(y, 10) + yPos);
             }, blankImage);
         }).then(function (compositeImage) {
-            var rect = (0, _Image.getColorBoundsRect)(compositeImage, 0xFF000000, 0, false);
+            var rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
             if (rect.width > 0 && rect.height > 0 || includeEmpty) {
                 return {
                     rect: rect,
@@ -46975,7 +46959,7 @@ var encodeAnimatedGif = function encodeAnimatedGif(_ref5) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     var outputPath = options.outputPath;
 
-    var pathObject = _path2.default.parse(cgsPath);
+    var pathObject = path.parse(cgsPath);
     var name = pathObject.name;
 
     var _name$split3 = name.split('_cgs_'),
@@ -46984,7 +46968,7 @@ var encodeAnimatedGif = function encodeAnimatedGif(_ref5) {
         uid = _name$split4[1];
 
     var filename = action + '_' + uid;
-    var imagePath = _path2.default.join(outputPath, filename + '.gif');
+    var imagePath = path.join(outputPath, filename + '.gif');
 
     console.info(' * * Saving Animated Gif: [' + imagePath + ']');
 
@@ -46993,7 +46977,7 @@ var encodeAnimatedGif = function encodeAnimatedGif(_ref5) {
         width = dimensions.width,
         height = dimensions.height;
 
-    var encoder = new _gifencoder2.default(width, height);
+    var encoder = new GIFEncoder(width, height);
     encoder.createReadStream().pipe(fs.createWriteStream(imagePath));
     encoder.start();
     encoder.setRepeat(0);
@@ -47066,7 +47050,7 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
             json.imageWidth = frameImages.length * frameRect.width;
             json.imageHeight = frameRect.height;
 
-            var _sheet = (0, _Image.createImage)(frameImages.length * frameRect.width, frameRect.height).then(function (img) {
+            var _sheet = createImage(frameImages.length * frameRect.width, frameRect.height).then(function (img) {
                 return frameImages.reduce(function (compositeImage, frameObject, index) {
                     var x = frameRect.x,
                         y = frameRect.y,
@@ -47086,7 +47070,7 @@ var makeStrip = function makeStrip(cgsPath, frames, image, options) {
         var rows = Math.ceil(frameImages.length / columns);
         json.imageWidth = columns * frameRect.width;
         json.imageHeight = rows * frameRect.height;
-        var sheet = (0, _Image.createImage)(columns * frameRect.width, rows * frameRect.height).then(function (img) {
+        var sheet = createImage(columns * frameRect.width, rows * frameRect.height).then(function (img) {
             return frameImages.reduce(function (compositeImage, frameObject, index) {
                 var x = frameRect.x,
                     y = frameRect.y,
@@ -47134,10 +47118,10 @@ var readSource = function readSource(_ref7, _ref8) {
     var inputPath = _ref8.inputPath;
 
     console.info(' --- Read Source Image');
-    var sourceImagePath = _path2.default.join(inputPath, 'unit_anime_' + unitId + '.png');
+    var sourceImagePath = path.join(inputPath, 'unit_anime_' + unitId + '.png');
 
     console.info('\tsourceImagePath: [' + sourceImagePath + ']');
-    return _jimp2.default.read(sourceImagePath);
+    return Jimp.read(sourceImagePath);
 };
 
 /**
@@ -47158,7 +47142,7 @@ var buildSheet = function buildSheet(image, _ref9, options) {
 
     if (animName) {
         console.info(' --- Building single sheet');
-        var cgsPath = _path2.default.join(inputPath, 'unit_' + animName + '_cgs_' + unitId + '.csv');
+        var cgsPath = path.join(inputPath, 'unit_' + animName + '_cgs_' + unitId + '.csv');
 
         return makeStrip(cgsPath, frames, image, options);
     }
@@ -47168,7 +47152,7 @@ var buildSheet = function buildSheet(image, _ref9, options) {
     return fs.readdirAsync(inputPath).then(function (files) {
         return Promise.all(files.map(function (file) {
             if (file.search(/^(unit_).+_cgs_\d+(\.csv)$/) > -1 && file.indexOf(unitId) > -1) {
-                var _cgsPath = _path2.default.join(inputPath, file);
+                var _cgsPath = path.join(inputPath, file);
                 return makeStrip(_cgsPath, frames, image, options);
             }
 
@@ -47198,7 +47182,7 @@ var main = function main(options) {
 
         return buildSheet(image, unit, options);
     }).then(function (output) {
-        if ((0, _lodash.isArray)(output)) {
+        if (isArray(output)) {
             return output.filter(function (onefile) {
                 return onefile !== null;
             }).map(function (saveInfo) {
@@ -47231,8 +47215,8 @@ var main = function main(options) {
     });
 };
 
-exports.default = main;
-
+module.exports = main;
+// export default main;
 
 if (__webpack_require__.c[__webpack_require__.s] === module) {
     main(_extends({}, defaultOptions, processArguments.apply(undefined, _toConsumableArray(process.argv)), {
