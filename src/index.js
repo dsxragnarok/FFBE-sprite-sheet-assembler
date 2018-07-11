@@ -15,21 +15,21 @@ const processArguments = function (...args) {
     return args.reduce((options, arg, index) => {
         switch (arg) {
         case '-a':
-            return { ...options, animName: args[index + 1] };
+            return Object.assign({}, options, { animName: args[index + 1] });
         case '-c':
-            return { ...options, columns: parseInt(args[index + 1], 10) };
+            return Object.assign({}, options, { columns: parseInt(args[index + 1], 10) });
         case '-e':
-            return { ...options, includeEmpty: true };
+            return Object.assign({}, options, { includeEmpty: true });
         case '-i':
-            return { ...options, inputPath: args[index + 1] };
+            return Object.assign({}, options, { inputPath: args[index + 1] });
         case '-o':
-            return { ...options, outputPath: args[index + 1] };
+            return Object.assign({}, options, { outputPath: args[index + 1] });
         case '-v':
-            return { ...options, verbose: true };
+            return Object.assign({}, options, { verbose: true });
         case '-j':
-            return { ...options, saveJson: true };
+            return Object.assign({}, options, { saveJson: true });
         case '-g':
-            return { ...options, outputGif: true };
+            return Object.assign({}, options, { outputGif: true });
         default:
             return options;
         }
@@ -501,9 +501,10 @@ module.exports = main;
 // export default main;
 
 if (require.main === module) {
-    main({
-        ...defaultOptions,
-        ...processArguments(...process.argv),
-        id: parseInt(process.argv[2], 10),
-    });
+    main(Object.assign(
+        {},
+        defaultOptions,
+        processArguments(...process.argv),
+        { id: parseInt(process.argv[2], 10) },
+    ));
 }
