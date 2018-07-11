@@ -46608,8 +46608,6 @@ function DoublyLinkedNode(key, val) {
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _toArray(arr) { return Array.isArray(arr) ? arr : Array.from(arr); }
@@ -46644,21 +46642,21 @@ var processArguments = function processArguments() {
     return args.reduce(function (options, arg, index) {
         switch (arg) {
             case '-a':
-                return _extends({}, options, { animName: args[index + 1] });
+                return Object.assign({}, options, { animName: args[index + 1] });
             case '-c':
-                return _extends({}, options, { columns: parseInt(args[index + 1], 10) });
+                return Object.assign({}, options, { columns: parseInt(args[index + 1], 10) });
             case '-e':
-                return _extends({}, options, { includeEmpty: true });
+                return Object.assign({}, options, { includeEmpty: true });
             case '-i':
-                return _extends({}, options, { inputPath: args[index + 1] });
+                return Object.assign({}, options, { inputPath: args[index + 1] });
             case '-o':
-                return _extends({}, options, { outputPath: args[index + 1] });
+                return Object.assign({}, options, { outputPath: args[index + 1] });
             case '-v':
-                return _extends({}, options, { verbose: true });
+                return Object.assign({}, options, { verbose: true });
             case '-j':
-                return _extends({}, options, { saveJson: true });
+                return Object.assign({}, options, { saveJson: true });
             case '-g':
-                return _extends({}, options, { outputGif: true });
+                return Object.assign({}, options, { outputGif: true });
             default:
                 return options;
         }
@@ -47219,9 +47217,7 @@ module.exports = main;
 // export default main;
 
 if (__webpack_require__.c[__webpack_require__.s] === module) {
-    main(_extends({}, defaultOptions, processArguments.apply(undefined, _toConsumableArray(process.argv)), {
-        id: parseInt(process.argv[2], 10)
-    }));
+    main(Object.assign({}, defaultOptions, processArguments.apply(undefined, _toConsumableArray(process.argv)), { id: parseInt(process.argv[2], 10) }));
 }
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(73)(module)))
 
