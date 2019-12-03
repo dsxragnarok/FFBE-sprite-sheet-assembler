@@ -198,7 +198,7 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
                 }
 
                 if (rotate !== 0) {
-                    crop.rotate(-1 * rotate, true);
+                    crop.rotate(rotate, true);
                 }
 
                 if (opacity < 100) {
