@@ -14,7 +14,7 @@
   "dependencies": {
     "bluebird": "^3.5.0",
     "gifencoder": "^1.1.0",
-    "jimp": "^0.2.24",
+    "jimp": "^0.9.3",
     "lodash": "^4.17.13",
     "mkdirp": "^0.5.1"
   },
