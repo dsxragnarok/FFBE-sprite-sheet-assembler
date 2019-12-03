@@ -33,7 +33,9 @@ const createImage = function (width, height) {
  * @param {number} pixel.a  The alpha channel
  * @return {Object} The object describing the pixel colors in range 0-255
  */
-const convertColorToDecimalRange = function ({ r, g, b, a }) {
+const convertColorToDecimalRange = function ({
+    r, g, b, a,
+}) {
     return {
         r: r / 255,
         g: g / 255,
@@ -52,7 +54,9 @@ const convertColorToDecimalRange = function ({ r, g, b, a }) {
  * @param {number} pixel.a  The alpha channel
  * @return {Object} The object describing the pixel colors in range 0-1
  */
-const convertColorTo255Range = function ({ r, g, b, a }) {
+const convertColorTo255Range = function ({
+    r, g, b, a,
+}) {
     return {
         r: Math.round(r * 255),
         g: Math.round(g * 255),
@@ -72,8 +76,9 @@ const blend = function (image) {
 
     range(width).forEach((col) => {
         range(height).forEach((row) => {
-            const { a, r, g, b } =
-                convertColorToDecimalRange(intToRGBA(image.getPixelColor(col, row)));
+            const {
+                a, r, g, b,
+            } = convertColorToDecimalRange(intToRGBA(image.getPixelColor(col, row)));
 
             if (a !== 0) {
                 const pixel = convertColorTo255Range({
@@ -116,25 +121,29 @@ const getColorBoundsRect = function (image, mask, color, findColor) {
     // !findColor : value & mask !== color
     const { width, height } = image.bitmap;
 
-    const extremities = range(height).reduce((acc, row) =>
-        range(width).reduce((obj, col) => {
-            const pixelColor = image.getPixelColor(col, row);
+    const extremities = range(height).reduce((acc, row) => range(width).reduce((obj, col) => {
+        const pixelColor = image.getPixelColor(col, row);
 
-            // eslint-disable-next-line no-bitwise
-            if ((findColor && (pixelColor & mask === color)) || (pixelColor & mask !== color)) {
-                const { minx, miny, maxx, maxy } = obj;
-                return {
-                    minx: col < minx ? col : minx,
-                    miny: row < miny ? row : miny,
-                    maxx: col > maxx ? col : maxx,
-                    maxy: row > maxy ? row : maxy,
-                };
-            }
-            return obj;
-        }, acc)
-    , { minx: width, maxx: 0, miny: height, maxy: 0 });
+        // eslint-disable-next-line no-bitwise
+        if ((findColor && (pixelColor & mask === color)) || (pixelColor & mask !== color)) {
+            const {
+                minx, miny, maxx, maxy,
+            } = obj;
+            return {
+                minx: col < minx ? col : minx,
+                miny: row < miny ? row : miny,
+                maxx: col > maxx ? col : maxx,
+                maxy: row > maxy ? row : maxy,
+            };
+        }
+        return obj;
+    }, acc), {
+        minx: width, maxx: 0, miny: height, maxy: 0,
+    });
 
-    const { minx: x, miny: y, maxx, maxy } = extremities;
+    const {
+        minx: x, miny: y, maxx, maxy,
+    } = extremities;
 
     return {
         x,
