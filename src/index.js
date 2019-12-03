@@ -1,7 +1,8 @@
+/* eslint-disable prefer-object-spread */
 const path = require('path');
 const Jimp = require('jimp');
-const _fs = require('fs');          // eslint-disable-line no-underscore-dangle
-const _mkdirp = require('mkdirp');  // eslint-disable-line no-underscore-dangle
+const _fs = require('fs'); // eslint-disable-line no-underscore-dangle
+const _mkdirp = require('mkdirp'); // eslint-disable-line no-underscore-dangle
 const { promisifyAll } = require('bluebird');
 const { chunk, isArray } = require('lodash');
 const GIFEncoder = require('gifencoder');
@@ -37,15 +38,15 @@ const processArguments = function (...args) {
 };
 
 const defaultOptions = {
-    id: -1,                 // {number} the unitId
-    animName: '',           // {string} animation name
-    columns: 0,             // {number} columns in sheet or strip
-    inputPath: '.',         // {string} source file(s) path
-    outputPath: '.',        // {string} output path
-    includeEmpty: false,    // {boolean} determines whether to include empty frames
-    verbose: false,         // {boolean} determines logging verbosity
-    saveJson: false,        // {boolean} determines whether to output json file
-    outputGif: false,       // {boolean} determines whether to output animated gif
+    id: -1, // {number} the unitId
+    animName: '', // {string} animation name
+    columns: 0, // {number} columns in sheet or strip
+    inputPath: '.', // {string} source file(s) path
+    outputPath: '.', // {string} output path
+    includeEmpty: false, // {boolean} determines whether to include empty frames
+    verbose: false, // {boolean} determines logging verbosity
+    saveJson: false, // {boolean} determines whether to output json file
+    outputGif: false, // {boolean} determines whether to output animated gif
 };
 
 /**
@@ -176,7 +177,12 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
         const [frameIndex, x, y, delay] = params;
         return createImage(2000, 2000)
             .then((blankImage) => frames[frameIndex].reduce((compositeImage, part) => {
-                const { imgX, imgY, imgWidth, imgHeight } = part;
+                const {
+                    imgX,
+                    imgY,
+                    imgWidth,
+                    imgHeight,
+                } = part;
                 let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
 
                 const {
@@ -198,6 +204,7 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
                 }
 
                 if (rotate !== 0) {
+                    console.log(`--% Rotate [${ rotate }] %--`);
                     crop.rotate(rotate, true);
                 }
 
@@ -226,8 +233,8 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
                 console.error(error);
                 return null;
             });
-    }))   // end lines.map
-    .then((frameObjects) => frameObjects.reduce((animObject, frame) => {
+    // end lines.map
+    })).then((frameObjects) => frameObjects.reduce((animObject, frame) => {
         if (!frame) {
             return animObject;
         }
@@ -243,11 +250,21 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
         frameImages.push(compositeImage);
         frameDelays.push(delay);
         if (rect && topLeft === null) {
-            const { x, y, width, height } = rect;
+            const {
+                x,
+                y,
+                width,
+                height,
+            } = rect;
             topLeft = { x, y };
             bottomRight = { x: x + width, y: y + height };
         } else if (rect) {
-            const { x, y, width, height } = rect;
+            const {
+                x,
+                y,
+                width,
+                height,
+            } = rect;
             topLeft = {
                 x: Math.min(x, topLeft.x),
                 y: Math.min(y, topLeft.y),
@@ -258,8 +275,18 @@ const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
             };
         }
 
-        return { frameImages, frameDelays, topLeft, bottomRight };
-    }, { frameImages: [], frameDelays: [], topLeft: null, bottomRight: null }));
+        return {
+            frameImages,
+            frameDelays,
+            topLeft,
+            bottomRight,
+        };
+    }, {
+        frameImages: [],
+        frameDelays: [],
+        topLeft: null,
+        bottomRight: null,
+    }));
 };
 
 /**
@@ -277,9 +304,7 @@ const encodeAnimatedGif = function ({
     dimensions = {},
     delays = 500,
     cgsPath = '',
-},
-    options = {},
-) {
+}, options = {}) {
     const { outputPath } = options;
     const pathObject = path.parse(cgsPath);
     const { name } = pathObject;
@@ -290,7 +315,12 @@ const encodeAnimatedGif = function ({
 
     console.info(` * * Saving Animated Gif: [${ imagePath }]`);
 
-    const { x, y, width, height } = dimensions;
+    const {
+        x,
+        y,
+        width,
+        height,
+    } = dimensions;
     const encoder = new GIFEncoder(width, height);
     encoder.createReadStream().pipe(fs.createWriteStream(imagePath));
     encoder.start();
@@ -327,7 +357,12 @@ const makeStrip = function (cgsPath, frames, image, options) {
         .then((lines) => processCgsData(lines, frames, image, options))
         .then((imageObject) => {
             console.info(' * * DONE processing cgs Data ');
-            const { frameImages, frameDelays, topLeft, bottomRight } = imageObject;
+            const {
+                frameImages,
+                frameDelays,
+                topLeft,
+                bottomRight,
+            } = imageObject;
 
             const frameRect = {
                 x: topLeft.x - 5,
@@ -357,7 +392,12 @@ const makeStrip = function (cgsPath, frames, image, options) {
 
                 const sheet = createImage(frameImages.length * frameRect.width, frameRect.height)
                     .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
-                        const { x, y, width, height } = frameRect;
+                        const {
+                            x,
+                            y,
+                            width,
+                            height,
+                        } = frameRect;
                         frameObject.crop(x, y, width, height);
 
                         return compositeImage.composite(frameObject, index * width, 0);
@@ -372,7 +412,12 @@ const makeStrip = function (cgsPath, frames, image, options) {
             json.imageHeight = rows * frameRect.height;
             const sheet = createImage(columns * frameRect.width, rows * frameRect.height)
                 .then((img) => frameImages.reduce((compositeImage, frameObject, index) => {
-                    const { x, y, width, height } = frameRect;
+                    const {
+                        x,
+                        y,
+                        width,
+                        height,
+                    } = frameRect;
                     const row = Math.floor(index / columns);
                     const col = index % columns;
 
@@ -389,10 +434,9 @@ const makeStrip = function (cgsPath, frames, image, options) {
                 image: sheet,
             };
 
-            return outputPath === '.' ?
-                output
-                :
-                mkdirp.mkdirpAsync(outputPath).then(() => output);
+            return outputPath === '.'
+                ? output
+                : mkdirp.mkdirpAsync(outputPath).then(() => output);
         });
 };
 
@@ -406,7 +450,7 @@ const makeStrip = function (cgsPath, frames, image, options) {
  * @param {string} options.inputPath - The file input path
  * @return {Promise} - Resolves to the source image as Jimp
  */
-const readSource = function ({ unitId, frames }, { inputPath }) {
+const readSource = function ({ unitId }, { inputPath }) {
     console.info(' --- Read Source Image');
     const sourceImagePath = path.join(inputPath, `unit_anime_${ unitId }.png`);
 
@@ -446,24 +490,23 @@ const buildSheet = function (image, { unitId, frames }, options) {
         })));
 };
 
-const usage =
-    `Usage: ffbetool num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
-        num: The unit id
-        [-i]: The source input directory
-        [-o]: The output directory
-        [-a]: The animation name
-        [-c]: The number of columns
-        [-e]: Include empty frames
-        [-v]: Verbose logs
-        [-j]: Save json file
-        [-g]: Save animated gif
-    `;
+const usage = `Usage: ffbetool num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
+    num: The unit id
+    [-i]: The source input directory
+    [-o]: The output directory
+    [-a]: The animation name
+    [-c]: The number of columns
+    [-e]: Include empty frames
+    [-v]: Verbose logs
+    [-j]: Save json file
+    [-g]: Save animated gif
+`;
 
 // entry point
 const main = (options) => {
     const { id } = options;
 
-    if (!id || isNaN(id) || id < 0) {
+    if (!id || Number.isNaN(id) || id < 0) {
         console.info(usage);
         return;
     }
