@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config config/webpack.config.js"
+    "build": "webpack --config config/webpack.config.js",
+    "start": "node src/index.js"
   },
   "author": "Kevin Phung <phung.kevin@gmail.com>",
   "license": "ISC",
