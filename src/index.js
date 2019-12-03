@@ -295,6 +295,7 @@ const encodeAnimatedGif = function ({
     encoder.createReadStream().pipe(fs.createWriteStream(imagePath));
     encoder.start();
     encoder.setRepeat(0);
+    encoder.setTransparent(0xFFFFFF);
 
     frames.forEach((frame, index) => {
         const frameDelay = typeof delays === 'number' ? delays : delays[index];
