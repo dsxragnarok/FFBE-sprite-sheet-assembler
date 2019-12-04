@@ -4,10 +4,11 @@ const Jimp = require('jimp');
 const _fs = require('fs'); // eslint-disable-line no-underscore-dangle
 const _mkdirp = require('mkdirp'); // eslint-disable-line no-underscore-dangle
 const { promisifyAll } = require('bluebird');
-const { chunk, isArray } = require('lodash');
+const { isArray } = require('lodash');
 const GIFEncoder = require('gifencoder');
 
 const { createImage, blend, getColorBoundsRect } = require('./Image');
+const { readCggFile } = require('./DataProcessor');
 
 const fs = promisifyAll(_fs);
 const mkdirp = promisifyAll(_mkdirp);
@@ -47,83 +48,6 @@ const defaultOptions = {
     verbose: false, // {boolean} determines logging verbosity
     saveJson: false, // {boolean} determines whether to output json file
     outputGif: false, // {boolean} determines whether to output animated gif
-};
-
-/**
- * Processes a row of from cgg data to get an array of parts that make up a frame
- *
- * @param {array} data  The array of parameters
- * @param {number} row  The row index of the cgg data
- * @return {Promise} Promise resolving to an array of all the parts that make up this frame
- */
-const processCggRowData = function (data, row) {
-    const params = data.split(',').slice(0, -1);
-    const { length } = params;
-
-    if (length < 2) {
-        return null;
-    }
-
-    const [anchor, count, ...rest] = params;
-
-    return chunk(rest, rest.length / count)
-        .map((config, index) => {
-            const [
-                xPos,
-                yPos,
-                nextType,
-                blendMode,
-                opacity,
-                rotate,
-                imgX,
-                imgY,
-                imgWidth,
-                imgHeight,
-                pageID,
-            ] = config;
-
-            return {
-                anchor: parseInt(anchor, 10),
-                xPos: parseInt(xPos, 10),
-                yPos: parseInt(yPos, 10),
-                nextType: parseInt(nextType, 10),
-                blendMode: parseInt(blendMode, 10),
-                opacity: parseInt(opacity, 10),
-                rotate: parseInt(rotate, 10),
-                imgX: parseInt(imgX, 10),
-                imgY: parseInt(imgY, 10),
-                imgWidth: parseInt(imgWidth, 10),
-                imgHeight: parseInt(imgHeight, 10),
-                pageID: parseInt(pageID, 10),
-                index,
-                flipX: parseInt(nextType, 10) === 1 || parseInt(nextType, 10) === 3,
-                flipY: parseInt(nextType, 10) === 2 || parseInt(nextType, 10) === 3,
-                lineIndex: row,
-            };
-        })
-        .reverse();
-};
-
-/**
- * Reads the cgg file and returns the data composing each frame
- *
- * @param {number} unitId   The unit's id
- * @param {object} options  The options
- * @param {string} options.inputPath    The source input path, defaults to '.'
- * @return {Promise} The Promise resolving to an object containing unitId and
- *                   the animation frames' data
- */
-const processCggFile = function (unitId, { inputPath }) {
-    console.info(' --- Processing Cgg File');
-    const { readFileAsync } = fs;
-    const cggPath = path.join(inputPath, `unit_cgg_${ unitId }.csv`);
-
-    console.info(`\tLoading [${ cggPath }]`);
-
-    return readFileAsync(cggPath, 'utf8')
-        .then((data) => data.replace('\r').split('\n'))
-        .then((data) => data.map(processCggRowData))
-        .then((frames) => ({ unitId, frames }));
 };
 
 /**
@@ -511,7 +435,7 @@ const main = (options) => {
         return;
     }
 
-    processCggFile(id, options)
+    readCggFile(id, options)
         .then((unit) => Promise.all([unit, readSource(unit, options)]))
         .then(([unit, image]) => buildSheet(image, unit, options))
         .then((output) => {
