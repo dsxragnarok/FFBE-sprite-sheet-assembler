@@ -7,8 +7,8 @@ const { promisifyAll } = require('bluebird');
 const { isArray } = require('lodash');
 const GIFEncoder = require('gifencoder');
 
-const { createImage, blend, getColorBoundsRect } = require('./Image');
-const { readCggFile } = require('./DataProcessor');
+const { createImage } = require('./Image');
+const { constructAnimationFrames, readCggFile } = require('./DataProcessor');
 
 const fs = promisifyAll(_fs);
 const mkdirp = promisifyAll(_mkdirp);
@@ -41,6 +41,7 @@ const processArguments = function (...args) {
 const defaultOptions = {
     id: -1, // {number} the unitId
     animName: '', // {string} animation name
+    cggPath: null, // {string} full path to the cgg file
     columns: 0, // {number} columns in sheet or strip
     inputPath: '.', // {string} source file(s) path
     outputPath: '.', // {string} output path
@@ -81,137 +82,137 @@ const saveFile = function ({ cgsPath, json, image }, { saveJson, outputPath }) {
     return resolution;
 };
 
-/**
- * Processes the cgs data row by row to extract the relevant frame image information
- * @param {array} rows An array containing the rows of data from cgs file
- * @param {array} frames An array of frame objects defining each frame and its images
- * @param {Jimp} sourceImage The source image
- * @param {Object} options The command options
- * @returns {Promise} Resolves to an object containing all the frame images and data for
- *                      compositing the final image sheet
- */
-const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
-    console.info(' --- Process Cgs Data');
+// /**
+//  * Processes the cgs data row by row to extract the relevant frame image information
+//  * @param {array} rows An array containing the rows of data from cgs file
+//  * @param {array} frames An array of frame objects defining each frame and its images
+//  * @param {Jimp} sourceImage The source image
+//  * @param {Object} options The command options
+//  * @returns {Promise} Resolves to an object containing all the frame images and data for
+//  *                      compositing the final image sheet
+//  */
+// const processCgsData = function (rows, frames, sourceImage, { includeEmpty }) {
+//     console.info(' --- Process Cgs Data');
 
-    return Promise.all(rows.map((params) => {
-        if (params.length < 2) {
-            return null;
-        }
+//     return Promise.all(rows.map((params) => {
+//         if (params.length < 2) {
+//             return null;
+//         }
 
-        const [frameIndex, x, y, delay] = params;
-        return createImage(2000, 2000)
-            .then((blankImage) => frames[frameIndex].reduce((compositeImage, part) => {
-                const {
-                    imgX,
-                    imgY,
-                    imgWidth,
-                    imgHeight,
-                } = part;
-                let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
+//         const [frameIndex, x, y, delay] = params;
+//         return createImage(2000, 2000)
+//             .then((blankImage) => frames[frameIndex].reduce((compositeImage, part) => {
+//                 const {
+//                     imgX,
+//                     imgY,
+//                     imgWidth,
+//                     imgHeight,
+//                 } = part;
+//                 let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
 
-                const {
-                    xPos,
-                    yPos,
-                    blendMode,
-                    flipX,
-                    flipY,
-                    rotate,
-                    opacity,
-                } = part;
+//                 const {
+//                     xPos,
+//                     yPos,
+//                     blendMode,
+//                     flipX,
+//                     flipY,
+//                     rotate,
+//                     opacity,
+//                 } = part;
 
-                if (blendMode === 1) {
-                    crop = blend(crop);
-                }
+//                 if (blendMode === 1) {
+//                     crop = blend(crop);
+//                 }
 
-                if (flipX || flipY) {
-                    crop.flip(flipX, flipY);
-                }
+//                 if (flipX || flipY) {
+//                     crop.flip(flipX, flipY);
+//                 }
 
-                if (rotate !== 0) {
-                    console.log(`--% Rotate [${ rotate }] %--`);
-                    crop.rotate(rotate, true);
-                }
+//                 if (rotate !== 0) {
+//                     console.log(`--% Rotate [${ rotate }] %--`);
+//                     crop.rotate(rotate, true);
+//                 }
 
-                if (opacity < 100) {
-                    crop.opacity(opacity / 100);
-                }
+//                 if (opacity < 100) {
+//                     crop.opacity(opacity / 100);
+//                 }
 
-                return compositeImage
-                    .composite(crop,
-                        (2000 / 2) + parseInt(x, 10) + xPos,
-                        (2000 / 2) + parseInt(y, 10) + yPos);
-            }, blankImage))
-            .then((compositeImage) => {
-                const rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
-                if ((rect.width > 0 && rect.height > 0) || includeEmpty) {
-                    return {
-                        rect,
-                        compositeImage,
-                        delay,
-                    };
-                }
+//                 return compositeImage
+//                     .composite(crop,
+//                         (2000 / 2) + parseInt(x, 10) + xPos,
+//                         (2000 / 2) + parseInt(y, 10) + yPos);
+//             }, blankImage))
+//             .then((compositeImage) => {
+//                 const rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
+//                 if ((rect.width > 0 && rect.height > 0) || includeEmpty) {
+//                     return {
+//                         rect,
+//                         compositeImage,
+//                         delay,
+//                     };
+//                 }
 
-                return null;
-            })
-            .catch((error) => {
-                console.error(error);
-                return null;
-            });
-    // end lines.map
-    })).then((frameObjects) => frameObjects.reduce((animObject, frame) => {
-        if (!frame) {
-            return animObject;
-        }
+//                 return null;
+//             })
+//             .catch((error) => {
+//                 console.error(error);
+//                 return null;
+//             });
+//     // end lines.map
+//     })).then((frameObjects) => frameObjects.reduce((animObject, frame) => {
+//         if (!frame) {
+//             return animObject;
+//         }
 
-        const { frameImages, frameDelays } = animObject;
-        const { compositeImage = null, rect = null, delay } = frame;
-        let { topLeft, bottomRight } = animObject;
+//         const { frameImages, frameDelays } = animObject;
+//         const { compositeImage = null, rect = null, delay } = frame;
+//         let { topLeft, bottomRight } = animObject;
 
-        if (!compositeImage || !rect) {
-            return animObject;
-        }
+//         if (!compositeImage || !rect) {
+//             return animObject;
+//         }
 
-        frameImages.push(compositeImage);
-        frameDelays.push(delay);
-        if (rect && topLeft === null) {
-            const {
-                x,
-                y,
-                width,
-                height,
-            } = rect;
-            topLeft = { x, y };
-            bottomRight = { x: x + width, y: y + height };
-        } else if (rect) {
-            const {
-                x,
-                y,
-                width,
-                height,
-            } = rect;
-            topLeft = {
-                x: Math.min(x, topLeft.x),
-                y: Math.min(y, topLeft.y),
-            };
-            bottomRight = {
-                x: Math.max(x + width, bottomRight.x),
-                y: Math.max(y + height, bottomRight.y),
-            };
-        }
+//         frameImages.push(compositeImage);
+//         frameDelays.push(delay);
+//         if (rect && topLeft === null) {
+//             const {
+//                 x,
+//                 y,
+//                 width,
+//                 height,
+//             } = rect;
+//             topLeft = { x, y };
+//             bottomRight = { x: x + width, y: y + height };
+//         } else if (rect) {
+//             const {
+//                 x,
+//                 y,
+//                 width,
+//                 height,
+//             } = rect;
+//             topLeft = {
+//                 x: Math.min(x, topLeft.x),
+//                 y: Math.min(y, topLeft.y),
+//             };
+//             bottomRight = {
+//                 x: Math.max(x + width, bottomRight.x),
+//                 y: Math.max(y + height, bottomRight.y),
+//             };
+//         }
 
-        return {
-            frameImages,
-            frameDelays,
-            topLeft,
-            bottomRight,
-        };
-    }, {
-        frameImages: [],
-        frameDelays: [],
-        topLeft: null,
-        bottomRight: null,
-    }));
-};
+//         return {
+//             frameImages,
+//             frameDelays,
+//             topLeft,
+//             bottomRight,
+//         };
+//     }, {
+//         frameImages: [],
+//         frameDelays: [],
+//         topLeft: null,
+//         bottomRight: null,
+//     }));
+// };
 
 /**
  * Composites all the frames into an animated gif
@@ -278,7 +279,7 @@ const makeStrip = function (cgsPath, frames, image, options) {
     return fs.readFileAsync(cgsPath, 'utf8')
         .then((data) => data.replace('\r').split('\n'))
         .then((lines) => lines.map((line) => line.split(',').slice(0, -1)))
-        .then((lines) => processCgsData(lines, frames, image, options))
+        .then((lines) => constructAnimationFrames(lines, frames, image, options))
         .then((imageObject) => {
             console.info(' * * DONE processing cgs Data ');
             const {
