@@ -82,6 +82,49 @@ const readCggFile = async function (unitId, {
     return { unitId, frames };
 };
 
+const compositeImageFrame = function (frameMetadata, x, y, sourceImage, targetImage) {
+    return frameMetadata.reduce((construct, part) => {
+        const {
+            imgX,
+            imgY,
+            imgWidth,
+            imgHeight,
+        } = part;
+        let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
+
+        const {
+            xPos,
+            yPos,
+            blendMode,
+            flipX,
+            flipY,
+            rotate,
+            opacity,
+        } = part;
+
+        if (blendMode === 1) {
+            crop = blend(crop);
+        }
+
+        if (flipX || flipY) {
+            crop.flip(flipX, flipY);
+        }
+
+        if (rotate !== 0) {
+            console.log(`--% Rotate [${ rotate }] %--`);
+            crop.rotate(rotate, true);
+        }
+
+        if (opacity < 100) {
+            crop.opacity(opacity / 100);
+        }
+
+        return construct.composite(crop,
+            (2000 / 2) + parseInt(x, 10) + xPos,
+            (2000 / 2) + parseInt(y, 10) + yPos);
+    }, targetImage);
+};
+
 /**
  * Processes the cgs data row by row to extract the relevant frame image information
  * @param {array} rows An array containing the rows of data from cgs file
@@ -92,7 +135,7 @@ const readCggFile = async function (unitId, {
  *                      compositing the final image sheet
  */
 const constructAnimationFrames = async function (rows, frames, sourceImage, { includeEmpty }) {
-    console.info(' --- Process Cgs Data');
+    console.info(' --- Construct Animation Frames');
     const data = rows.map(async (params) => {
         if (params.length < 2) {
             return null;
@@ -102,47 +145,8 @@ const constructAnimationFrames = async function (rows, frames, sourceImage, { in
 
         try {
             const blankImage = await createImage(2000, 2000);
-            const compositeImage = frames[frameIndex].reduce((construct, part) => {
-                const {
-                    imgX,
-                    imgY,
-                    imgWidth,
-                    imgHeight,
-                } = part;
-                let crop = sourceImage.clone().crop(imgX, imgY, imgWidth, imgHeight);
-
-                const {
-                    xPos,
-                    yPos,
-                    blendMode,
-                    flipX,
-                    flipY,
-                    rotate,
-                    opacity,
-                } = part;
-
-                if (blendMode === 1) {
-                    crop = blend(crop);
-                }
-
-                if (flipX || flipY) {
-                    crop.flip(flipX, flipY);
-                }
-
-                if (rotate !== 0) {
-                    console.log(`--% Rotate [${ rotate }] %--`);
-                    crop.rotate(rotate, true);
-                }
-
-                if (opacity < 100) {
-                    crop.opacity(opacity / 100);
-                }
-
-                return construct
-                    .composite(crop,
-                        (2000 / 2) + parseInt(x, 10) + xPos,
-                        (2000 / 2) + parseInt(y, 10) + yPos);
-            }, blankImage);
+            const compositeImage = compositeImageFrame(frames[frameIndex],
+                x, y, sourceImage, blankImage);
 
             const rect = getColorBoundsRect(compositeImage, 0xFF000000, 0, false);
             if ((rect.width > 0 && rect.height > 0) || includeEmpty) {
