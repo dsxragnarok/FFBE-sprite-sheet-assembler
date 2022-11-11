@@ -30,6 +30,6 @@
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-react": "^7.17.0",
     "eslint-plugin-react-hooks": "^1.7.0",
-    "webpack": "^2.6.1"
+    "webpack": "^5.75.0"
   }
 }
