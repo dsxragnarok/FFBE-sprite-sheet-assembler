@@ -9,6 +9,7 @@ to assemble the sprite sheet.
 * Requires [nodejs](https://nodejs.org/en/)
 
 `npm install && npm run build`
+
 This will create the `ffbetool` executable in the `dist` folder.
 Use the one for your operating system.
 
