@@ -8,7 +8,7 @@ to assemble the sprite sheet.
 
 * Requires [nodejs](https://nodejs.org/en/)
 
-`npm install`
+`npm install && npm run build`
 
 ### Usage
 ```
@@ -25,9 +25,9 @@ node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir]
 * **-i:** The input path, defaults to current directory.
 * **-o:** The output path, defaults to current directory.
 
+> More [detailed instructions](./documentation/instructions.md)
 
 ### References
 * Code based off of puggsoy's [FFBETool](https://github.com/puggsoy/MiscTools/tree/master/FFBETool/src)
 * Original python code for Brave Frontier from [pastebin](http://pastebin.com/vXc0yNRh)
 * Information gleaned from: [The VG Resource](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=9&cad=rja&uact=8&ved=0ahUKEwjU8bHRxsfOAhVL62MKHT6xCLwQFgg5MAg&url=http%3A%2F%2Fwww.vg-resource.com%2Fthread-27841.html&usg=AFQjCNHXVA5Jn78-QtXtJAtpmuZoEAxr_g&sig2=M6vg5hTSpyOJUD2qMuIUsQ&bvm=bv.129759880,d.cGc)
-

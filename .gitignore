@@ -41,3 +41,6 @@ output/
 tmp/
 
 .vscode/
+
+# OS
+.DS_Store
