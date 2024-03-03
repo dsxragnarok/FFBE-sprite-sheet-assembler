@@ -3,11 +3,15 @@
   "version": "0.3.1",
   "description": "tool to construct animation frames from png and ccg information",
   "main": "src/index.js",
+  "bin": "src/index.js",
   "scripts": {
     "lint": "eslint src/**/*.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config config/webpack.config.js",
+    "build": "pkg .",
     "start": "node src/index.js"
+  },
+  "pkg": {
+    "outputPath": "dist"
   },
   "author": "Kevin Phung <phung.kevin@gmail.com>",
   "license": "ISC",
@@ -30,6 +34,7 @@
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "eslint-plugin-react": "^7.17.0",
     "eslint-plugin-react-hooks": "^1.7.0",
+    "pkg": "^5.8.1",
     "webpack": "^2.6.1"
   }
 }
