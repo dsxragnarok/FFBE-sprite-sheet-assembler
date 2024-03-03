@@ -21,7 +21,7 @@ node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir]
 * **-e:** If this option is included, the strips will include any empty frames. By default empty frames are excluded.
 * **-v:** If this option is included, more information will be printed to console.
 * **-j:** This option saves the sheet information in json format saved as a .json file.
-* **-g:** If htis option is included, an animated gif will also be outputed.
+* **-g:** If this option is included, an animated gif will also be outputed.
 * **-i:** The input path, defaults to current directory.
 * **-o:** The output path, defaults to current directory.
 
