@@ -4,20 +4,20 @@
 Nodejs
 
 1. Download the repository either with clone or the zip
-![Screenshot 2024-03-02 at 4.53.06 PM.png](download.png)
+![download project](download.png)
 2. Change to project's directory
     ```bash
     > cd FFBE-sprite-sheet-assembler
     ```
 
-3. Install with npm. This the build should be located in the project’s `build` directory.
+3. Install and build executable with npm. This builds the `ffbetool` executable in the project's `dist` directory. There will be one for each platform (MacOs, Windows and Linux). Use the one for your platform.
 
     ```bash
     > npm install && npm run build
     ```
 ## Usage
 ```
-node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
+dist/ffbetool-macos num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir] [-o outDir]
 
 ```
 * **num:** (required) the unit ID number, must be the first argument.
@@ -41,20 +41,20 @@ node build/ffbetool.js num [-a anim] [-c columns] [-e] [-v] [-j] [-g] [-i inDir]
 2. To assemble a spritesheet, run the following command passing in the input and output directories to the `-i` and `-o` flags respectively. This will assemble all the animations in the input directory.
 
     ```bash
-    > node build/ffbetool.js 204000103 -i ./build/tmp/kain-highwind -o ./output
+    > dist/ffbetool-macos 204000103 -i ./build/tmp/kain-highwind -o ./output
     ```
 
 3. Alternatively, use the `-a` flag to specify just one animation.
 
     ```bash
-    > node build/ffbetool.js 204000103 -a limit_atk -i ./build/tmp/kain-highwind -o ./output
+    > dist/ffbetool-macos 204000103 -a limit_atk -i ./build/tmp/kain-highwind -o ./output
     ```
 
 ### Note
 
 If the input and/or output directory names have spaces then they will need to be escaped with backslash. Alternatively, enclosing the directories in quotes should also work.
 ```bash
-> node build/ffbetool.js 204000103 -i /Users/Kevin\ Phung/tmp/FFBE/input/Kain\ Highwind -o /Users/Kevin\ Phung/FFBE/output/Kain\ Highwind
+> dist/ffbetool-macos 204000103 -i /Users/Kevin\ Phung/tmp/FFBE/input/Kain\ Highwind -o /Users/Kevin\ Phung/FFBE/output/Kain\ Highwind
 
-> node build/ffbetool.js 204000103 -i "/Users/Kevin Phung/tmp/FFBE/input/Kain Highwind" -o "/Users/Kevin Phung/FFBE/output/Kain Highwind"
+> dist/ffbetool-macos 204000103 -i "/Users/Kevin Phung/tmp/FFBE/input/Kain Highwind" -o "/Users/Kevin Phung/FFBE/output/Kain Highwind"
 ```
