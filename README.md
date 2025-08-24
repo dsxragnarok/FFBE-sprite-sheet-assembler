@@ -4,6 +4,9 @@ Tool to assemble Final Fantasy Brave Exvius sprite sheets.
 Takes the a master sprite atlas png file and uses the information from cvs files
 to assemble the sprite sheet.
 
+## Deprecated
+I've re-written this project in Rust which makes it considerably more efficient and runs much faster. You can go to [ffbetool](https://github.com/dsxragnarok/ffbetool) to download.
+
 ## Instructions
 
 * Requires [nodejs](https://nodejs.org/en/)
